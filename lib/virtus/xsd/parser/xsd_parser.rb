@@ -1,8 +1,8 @@
 module Virtus
   module Xsd
     class XsdParser
-      def self.parse(xsd_document)
-        new(xsd_document).parse
+      def self.parse(xsd_content)
+        new(Nokogiri::XML(xsd_content)).parse
       end
 
       def initialize(xsd_document)
