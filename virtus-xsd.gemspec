@@ -6,10 +6,10 @@ require 'virtus/xsd/version'
 Gem::Specification.new do |spec|
   spec.name          = "virtus-xsd"
   spec.version       = Virtus::Xsd::VERSION
-  spec.authors       = ["bondarev"]
+  spec.authors       = ["mirasrael"]
   spec.email         = ["alexander.i.bondarev@gmail.com"]
-  spec.description   = %q{TODO: Write a gem description}
-  spec.summary       = %q{TODO: Write a gem summary}
+  spec.description   = %q{Generates virtus based ruby classes by xsd}
+  spec.summary       = %q{Generates virtus based ruby classes by xsd}
   spec.homepage      = ""
   spec.license       = "MIT"
 
@@ -18,6 +18,10 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
+  spec.add_dependency 'nokogiri'
+  spec.add_dependency 'virtus'
+
   spec.add_development_dependency "bundler", "~> 1.3"
   spec.add_development_dependency "rake"
+  spec.add_development_dependency 'rspec'
 end
