@@ -1,0 +1,20 @@
+#!/usr/bin/env ruby
+unless (1..3).include?(ARGV.length)
+  puts "Usage: $0 <path-to-xsd> [<output-dir> [<module-name>]]"
+  exit(1)
+end
+
+xsd_path = File.expand_path(ARGV[0])
+
+Dir.chdir(File.expand_path('..', __FILE__)) do
+  require 'bundler'
+
+  Bundler.setup
+
+  require 'virtus/xsd'
+  require 'nokogiri'
+
+  xsd = Nokogiri::XML(File.read(xsd_path))
+  type_definitions = Virtus::Xsd::XsdParser.parse(xsd)
+  Virtus::Xsd::RubyGenerator.new(type_definitions, output_dir: ARGV[1], module_name: ARGV[2]).generate_classes
+end
