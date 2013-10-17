@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'virtus'
 
 describe Virtus::Xsd::RubyGenerator do
   let(:spec_dir) { File.expand_path('../..', __FILE__) }
@@ -6,8 +7,8 @@ describe Virtus::Xsd::RubyGenerator do
   let(:xsd) { File.read(File.join(spec_dir, 'fixtures/sample.xsd')) }
   let(:type_definitions) { Virtus::Xsd::XsdParser.parse(xsd).values }
 
-  before do
-    FileUtils.rm_f(output_dir)
+  before :each do
+    FileUtils.rm_rf(output_dir)
   end
 
   subject do
@@ -19,5 +20,7 @@ describe Virtus::Xsd::RubyGenerator do
     expect { load File.join(output_dir, 'test', 'country.rb') }.to_not raise_error
     Object.const_defined?(:Test).should be_true
     Test.const_defined?(:Country).should be_true
+    Test::Country.should respond_to :attribute_set
+    Test::Country.attribute_set[:country_name].should_not be_nil
   end
 end

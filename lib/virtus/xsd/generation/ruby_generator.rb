@@ -18,9 +18,13 @@ module Virtus
       def generate_class(type_definition)
         output_for(type_definition) do |output|
           builder = Generation::RubyClassBuilder.new(output)
-          builder.within_module(module_name) do
+          builder.module_(module_name) do
             builder.class_(type_definition.name) do
-
+              builder.invoke_pretty 'include', 'Virtus.model'
+              builder.blank_line
+              type_definition.attributes.values.each do |attr|
+                builder.invoke_pretty 'attribute', ":#{attr.name}", attr.type.name
+              end
             end
           end
         end
@@ -46,6 +50,19 @@ module Virtus
 
       def module_name
         @options[:module_name]
+      end
+
+      private
+
+      def within_module(module_name)
+        parts = module_name.split('::', 2)
+        puts "module #{parts.first}"
+        if parts.length > 1
+          module_(parts.second) { yield }
+        else
+          ident { yield }
+        end
+        puts "end"
       end
     end
   end
