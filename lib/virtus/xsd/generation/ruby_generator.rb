@@ -16,6 +16,8 @@ module Virtus
       private
 
       def generate_class(type_definition)
+        p type_definition.base?
+        return if type_definition.base?
         output_for(type_definition) do |output|
           builder = Generation::RubyClassBuilder.new(output)
           builder.module_(module_name) do

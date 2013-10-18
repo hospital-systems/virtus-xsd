@@ -1,11 +1,12 @@
 module Virtus
   module Xsd
     class TypeDefinition
-      attr_reader :name
+      attr_reader :name, :options
       attr_reader :attributes
 
-      def initialize(name)
+      def initialize(name, opts = {})
         @name = name
+        @options = opts
         @attributes = {}
       end
 
@@ -19,6 +20,10 @@ module Virtus
 
       def eql?(other)
         other.is_a?(Virtus::Xsd::TypeDefinition) && name == other.name
+      end
+
+      def base?
+        options[:base]
       end
 
       alias_method :==, :eql?

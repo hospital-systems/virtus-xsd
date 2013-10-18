@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="ANY" abstract="true">
+    <xs:attribute name="nullable" type="xs:boolean"/>
+  </xs:complexType>
   <xs:complexType name="City">
     <xs:sequence>
       <xs:element name="name" type="xs:string"/>
+      <xs:element name="crest" type="ANY"/>
     </xs:sequence>
   </xs:complexType>
   <xs:complexType name="Country">
