@@ -3,17 +3,17 @@ require 'active_support/core_ext/hash/keys'
 module Virtus
   module Xsd
     class XsdParser
-      def self.parse(xsd_content, config = {})
-        new(Nokogiri::XML(xsd_content), config).parse
+      def self.parse(xsd_path, config = {})
+        new(xsd_path, config).parse
       end
 
-      def initialize(xsd_document, config = {})
-        @xsd_document = xsd_document
+      def initialize(xsd_path, config = {})
+        @xsd_documents = [Nokogiri::XML(File.read(xsd_path))]
         @config = config
       end
 
       def parse
-        nodes = complex_type_nodes
+        nodes = type_nodes
         type_definitions = collect_type_definitions(nodes)
         apply_overrides(type_definitions)
         fill_attributes(nodes, type_definitions.merge(base_type_definitions))
@@ -22,7 +22,7 @@ module Virtus
 
       private
 
-      attr_reader :xsd_document
+      attr_reader :xsd_documents
 
       def fill_attributes(nodes, type_registry)
         nodes.each do |node|
@@ -73,8 +73,10 @@ module Virtus
         }
       end
 
-      def complex_type_nodes
-        xsd_document.xpath('xs:schema/xs:complexType')
+      def type_nodes
+        xsd_documents.each_with_object([]) do |doc, nodes|
+          nodes.concat(doc.xpath('xs:schema/*[local-name()="complexType" or local-name()="simpleType"]'))
+        end
       end
 
       def type_overridden?(type_definition)

@@ -12,7 +12,7 @@ module Virtus
       end
 
       def [](attr_name)
-        attributes[attr_name]
+        attributes[attr_name] || (superclass && superclass[attr_name])
       end
 
       def hash

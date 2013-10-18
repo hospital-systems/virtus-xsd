@@ -16,8 +16,7 @@ Dir.chdir(File.expand_path('..', __FILE__)) do
   require 'virtus/xsd'
   require 'nokogiri'
 
-  xsd_content = File.read(xsd_path)
-  type_definitions = Virtus::Xsd::XsdParser.parse(xsd_content)
+  type_definitions = Virtus::Xsd::XsdParser.parse(xsd_path)
   Virtus::Xsd::RubyGenerator.new(type_definitions,
                                  output_dir: output_dir, module_name: module_name).generate_classes
 end
