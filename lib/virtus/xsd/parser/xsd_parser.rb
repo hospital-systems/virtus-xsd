@@ -13,7 +13,7 @@ module Virtus
         nodes = complex_type_nodes
         type_definitions = collect_type_definitions(nodes)
         fill_attributes(nodes, base_type_definitions.merge(type_definitions))
-        type_definitions
+        type_definitions.values
       end
 
       private

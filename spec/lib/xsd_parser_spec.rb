@@ -9,7 +9,7 @@ describe Virtus::Xsd::XsdParser do
 
   it 'should parse sample.xsd' do
     type_definitions = described_class.parse(xsd)
-    country = type_definitions['Country']
+    country = type_definitions.find { |typedef| typedef.name == 'Country' }
     country.should_not be_nil
     country.name.should == 'Country'
     country.should have_attribute('country_name').of_type('String')
