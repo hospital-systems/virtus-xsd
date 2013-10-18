@@ -26,7 +26,7 @@ describe Virtus::Xsd::RubyGenerator do
     Object.const_defined?(:Test).should be_true
     Test.const_defined?(:Country).should be_true
     Test::Country.should respond_to :attribute_set
-    Test::Country.attribute_set[:country_name].should_not be_nil
+    Test::Country.attribute_set[:name].should_not be_nil
   end
 
   it 'should not generate base types' do

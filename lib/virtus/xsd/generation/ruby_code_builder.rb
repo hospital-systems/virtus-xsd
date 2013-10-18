@@ -1,7 +1,7 @@
 module Virtus
   module Xsd
     module Generation
-      class RubyClassBuilder
+      class RubyCodeBuilder
         def initialize(output)
           @output = output
           @identation = ''
@@ -50,6 +50,7 @@ module Virtus
         end
 
         def build_class(name, superclass = nil)
+          superclass = nil if superclass == 'Object'
           build_line "class #{[name, superclass].compact.join(' < ')}"
           ident { yield }
           build_line 'end'

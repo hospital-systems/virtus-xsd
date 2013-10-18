@@ -3,6 +3,7 @@ module Virtus
     class TypeDefinition
       attr_reader :name, :options
       attr_reader :attributes
+      attr_accessor :superclass
 
       def initialize(name, opts = {})
         @name = name

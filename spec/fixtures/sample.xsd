@@ -3,18 +3,38 @@
   <xs:complexType name="ANY" abstract="true">
     <xs:attribute name="nullable" type="xs:boolean"/>
   </xs:complexType>
-  <xs:complexType name="City">
+  <xs:complexType name="ST">
+    <xs:complexContent>
+      <xs:extension base="ANY">
+        <xs:attribute name="value" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="GeoUnit">
     <xs:sequence>
-      <xs:element name="name" type="xs:string"/>
-      <xs:element name="crest" type="ANY"/>
+      <xs:element name="latitude" type="xs:float" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="longitude" type="xs:float" minOccurs="1" maxOccurs="1"/>
     </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+  <xs:complexType name="City">
+    <xs:complexContent>
+      <xs:extension base="GeoUnit">
+        <xs:sequence>
+          <xs:element name="crest" type="ANY"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
   </xs:complexType>
   <xs:complexType name="Country">
-    <xs:sequence>
-      <xs:element name="country_name" type="xs:string"/>
-      <xs:element name="population" type="xs:decimal"/>
-      <xs:element name="city" type="City" minOccurs="0" maxOccurs="unbounded"/>
-    </xs:sequence>
+    <xs:complexContent>
+      <xs:extension base="GeoUnit">
+        <xs:sequence>
+          <xs:element name="population" type="xs:decimal"/>
+          <xs:element name="city" type="City" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
   </xs:complexType>
   <xs:element name="country" type="Country">
   </xs:element>

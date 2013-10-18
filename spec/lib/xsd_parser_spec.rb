@@ -16,7 +16,7 @@ describe Virtus::Xsd::XsdParser do
     country = parsed_types['Country']
     country.should_not be_nil
     country.name.should == 'Country'
-    country.should have_attribute('country_name').of_type('String')
+    country.should have_attribute('name').of_type('String')
     country.should have_attribute('population').of_type('Numeric')
     country.should have_attribute('city').of_type('City')
   end
@@ -26,6 +26,10 @@ describe Virtus::Xsd::XsdParser do
     parsed_types['ANY'].should be_nil
     city = parsed_types['City']
     city.should have_attribute('crest').of_type('Object')
+  end
+
+  it 'should parse extending types' do
+    parsed_types['Object'].should_not be_nil
   end
 
   class HaveAttributeMatcher

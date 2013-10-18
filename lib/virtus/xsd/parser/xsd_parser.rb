@@ -1,3 +1,5 @@
+require 'active_support/core_ext/hash/keys'
+
 module Virtus
   module Xsd
     class XsdParser
@@ -22,16 +24,37 @@ module Virtus
 
       attr_reader :xsd_document
 
-      def fill_attributes(nodes, type_definitions)
+      def fill_attributes(nodes, type_registry)
         nodes.each do |node|
-          type_definition = type_definitions[node['name']]
+          type_definition = type_registry[node['name']]
           next if type_overridden?(type_definition)
-          node.xpath('xs:sequence/xs:element').each do |element|
-            attr_name = element['name']
-            attr_type = type_definitions[element['type']]
-            raise "Unknown type #{element['type']}" unless attr_type
-            type_definition.attributes[attr_name] = AttributeDefinition.new(attr_name, attr_type)
+          type_definition.superclass = get_superclass(node, type_registry)
+          attributes = collect_attributes(node, type_registry)
+          attributes += collect_extended_attributes(node, type_registry)
+          attributes.each do |attr|
+            type_definition.attributes[attr.name] = attr
           end
+        end
+      end
+
+      def get_superclass(node, type_registry)
+        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
+        base = node.xpath(xpath).first
+        base && type_registry[base.text]
+      end
+
+      def collect_extended_attributes(node, type_registry)
+        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
+          collect_attributes(extension_node, type_registry)
+        end.flatten
+      end
+
+      def collect_attributes(node, type_registry)
+        (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
+          attr_name = element['name']
+          attr_type = type_registry[element['type']]
+          raise "Unknown type #{element['type']}" unless attr_type
+          AttributeDefinition.new(attr_name, attr_type)
         end
       end
 
@@ -44,7 +67,9 @@ module Virtus
       def base_type_definitions
         @base_type_definitions ||= {
           'xs:string' => TypeDefinition.new('String'),
-          'xs:decimal' => TypeDefinition.new('Numeric')
+          'xs:decimal' => TypeDefinition.new('Numeric'),
+          'xs:float' => TypeDefinition.new('Float'),
+          'xs:boolean' => TypeDefinition.new('Boolean')
         }
       end
 

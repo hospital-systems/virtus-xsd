@@ -1,4 +1,4 @@
-require 'virtus/xsd/generation/ruby_class_builder'
+require 'virtus/xsd/generation/ruby_code_builder'
 require 'active_support/core_ext/string/inflections'
 
 module Virtus
@@ -16,17 +16,16 @@ module Virtus
       private
 
       def generate_class(type_definition)
-        p type_definition.base?
         return if type_definition.base?
         output_for(type_definition) do |output|
-          builder = Generation::RubyClassBuilder.new(output)
-          builder.module_(module_name) do
-            builder.class_(type_definition.name) do
-              builder.invoke_pretty 'include', 'Virtus.model'
-              builder.blank_line
-              type_definition.attributes.values.each do |attr|
-                builder.invoke_pretty 'attribute', ":#{attr.name}", attr.type.name
-              end
+          builder = Generation::RubyCodeBuilder.new(output)
+          builder.class_(type_definition.name,
+                         superclass: type_definition.superclass && type_definition.superclass.name,
+                         module_name: module_name) do
+            builder.invoke_pretty 'include', 'Virtus.model'
+            builder.blank_line
+            type_definition.attributes.values.each do |attr|
+              builder.invoke_pretty 'attribute', ":#{attr.name}", attr.type.name
             end
           end
         end
