@@ -8,7 +8,7 @@ module Virtus
       end
 
       def initialize(xsd_path, config = {})
-        @xsd_documents = [Nokogiri::XML(File.read(xsd_path))]
+        @xsd_documents = collect_xsd_documents(xsd_path)
         @config = config
       end
 
@@ -88,6 +88,18 @@ module Virtus
           type_info = type_info.symbolize_keys
           type_definitions[type_name] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
         end
+      end
+
+      def collect_xsd_documents(path, processed_paths = Set.new)
+        return [] if processed_paths.include?(path)
+        processed_paths.add(path)
+        document = Nokogiri::XML(File.read(path))
+        nodes = document.xpath('xs:schema/xs:include')
+        included_paths = nodes.map { |node| File.expand_path(node['schemaLocation'], File.dirname(path)) }
+        included_documents = included_paths.inject([]) { |agg, included_path|
+          agg.concat(collect_xsd_documents(included_path, processed_paths))
+        }
+        included_documents + [document]
       end
     end
   end
