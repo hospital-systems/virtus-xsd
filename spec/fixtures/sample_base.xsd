@@ -17,4 +17,5 @@
     </xs:sequence>
     <xs:attribute name="name" type="xs:string"/>
   </xs:complexType>
+  <xs:element name="population" type="xs:integer"/>
 </xs:schema>

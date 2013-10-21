@@ -51,9 +51,8 @@ module Virtus
 
       def collect_attributes(node, type_registry)
         (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
-          attr_name = element['name']
-          attr_type = type_registry[element['type']]
-          raise "Unknown type #{element['type']}" unless attr_type
+          attr_name = element['name'] || element['ref']
+          attr_type = resolve_type(element, type_registry)
           AttributeDefinition.new(attr_name, attr_type)
         end
       end
@@ -69,6 +68,7 @@ module Virtus
           'xs:string' => TypeDefinition.new('String'),
           'xs:decimal' => TypeDefinition.new('Numeric'),
           'xs:float' => TypeDefinition.new('Float'),
+          'xs:integer' => TypeDefinition.new('Integer'),
           'xs:boolean' => TypeDefinition.new('Boolean')
         }
       end
@@ -100,6 +100,18 @@ module Virtus
           agg.concat(collect_xsd_documents(included_path, processed_paths))
         }
         included_documents + [document]
+      end
+
+      def resolve_type(node, type_registry)
+        type = node['type']
+        if type.nil?
+          ref = node['ref']
+          type = xsd_documents.map do |doc|
+            doc.xpath("xs:schema/*[(local-name()=\"attribute\" or local-name()=\"element\") and @name=\"#{ref}\"]").first
+          end.compact.first['type']
+        end
+        raise "Unknown type: #{type}" unless type_registry.key?(type)
+        type_registry[type]
       end
     end
   end

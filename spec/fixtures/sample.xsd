@@ -14,7 +14,7 @@
     <xs:complexContent>
       <xs:extension base="GeoUnit">
         <xs:sequence>
-          <xs:element name="population" type="xs:decimal"/>
+          <xs:element ref="population"/>
           <xs:element name="city" type="City" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
       </xs:extension>
