@@ -7,7 +7,7 @@ describe Virtus::Xsd::RubyGenerator do
   let(:output_dir) { File.join(spec_dir, 'tmp') }
   let(:xsd_path) { File.join(spec_dir, 'fixtures', 'sample.xsd') }
   let(:config) { YAML::load(File.read(File.join(spec_dir, 'fixtures', 'config.yml'))) }
-  let(:type_definitions) { Virtus::Xsd::XsdParser.parse(xsd_path, config) }
+  let(:type_definitions) { Virtus::Xsd::Parser.parse(xsd_path, config) }
 
   before :each do
     FileUtils.rm_rf(output_dir)

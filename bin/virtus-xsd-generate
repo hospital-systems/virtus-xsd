@@ -33,6 +33,6 @@ Dir.chdir(File.expand_path('..', __FILE__)) do
   require 'yaml'
 
   config = options[:config] && YAML.load(File.read(options[:config]))
-  type_definitions = Virtus::Xsd::XsdParser.parse(xsd_path, config)
+  type_definitions = Virtus::Xsd::Parser.parse(xsd_path, config)
   Virtus::Xsd::RubyGenerator.new(type_definitions, options).generate_classes
 end

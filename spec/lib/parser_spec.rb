@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'active_support/core_ext/enumerable'
 
-describe Virtus::Xsd::XsdParser do
+describe Virtus::Xsd::Parser do
   let(:fixtures_dir) { File.expand_path('../../fixtures', __FILE__) }
   let(:xsd) { File.join(fixtures_dir, 'sample.xsd') }
   let(:config) { YAML::load(File.read(File.join(fixtures_dir, 'config.yml'))) }
