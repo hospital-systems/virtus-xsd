@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:hs="urn:hospital-systems-com:v1">
+  <xs:import namespace="urn:hospital-systems-com:v1" schemaLocation="sample-extension.xsd"/>
   <xs:include schemaLocation="sample_base.xsd"/>
   <xs:complexType name="City">
     <xs:complexContent>
@@ -14,7 +15,7 @@
     <xs:complexContent>
       <xs:extension base="GeoUnit">
         <xs:sequence>
-          <xs:element ref="population"/>
+          <xs:element ref="hs:population"/>
           <xs:element name="city" type="City" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
       </xs:extension>

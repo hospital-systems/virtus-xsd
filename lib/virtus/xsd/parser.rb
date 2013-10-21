@@ -12,7 +12,7 @@ module Virtus
       end
 
       def initialize(xsd_path, config = {})
-        @scope = Virtus::Xsd::Parser::Scope.new(xsd_path)
+        @scope = Scope.load(xsd_path)
         @config = config
       end
 
@@ -24,7 +24,7 @@ module Virtus
         type_registry.values
       end
 
-      private
+      protected
 
       attr_reader :scope
       attr_accessor :type_registry
@@ -56,7 +56,7 @@ module Virtus
 
       def collect_attributes(node)
         (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
-          attr_name = element['name'] || element['ref']
+          attr_name = element['name'] || without_namespace(element['ref'])
           attr_type = resolve_type(element)
           raise "Unknown type: #{attr_type}" unless type_registry.key?(attr_type)
           AttributeDefinition.new(attr_name, type_registry[attr_type])
@@ -90,10 +90,14 @@ module Virtus
         end
       end
 
+      def without_namespace(name)
+        name.split(':').last
+      end
+
       def resolve_type(node)
         if node['ref']
           referenced_node = find_attribute_or_element_by_name(node['ref'])
-          fail "Can't find referenced #{node.tag_name} by name '#{node['ref']}'" if referenced_node.nil?
+          fail "Can't find referenced #{node.name} by name '#{node['ref']}'" if referenced_node.nil?
           referenced_node['type']
         else
           node['type']

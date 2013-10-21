@@ -1,9 +1,19 @@
+require 'virtus/xsd/parser/document'
+
 module Virtus
   module Xsd
     class Parser
       class Scope
-        def initialize(xsd_path)
-          @xsd_documents = collect_xsd_documents(xsd_path)
+        def self.load(path)
+          scoped_documents = []
+          unprocessed_documents = [Document.load(path)]
+          until unprocessed_documents.empty?
+            next_document = unprocessed_documents.shift
+            next if scoped_documents.include?(next_document)
+            scoped_documents << next_document
+            unprocessed_documents.concat(next_document.includes)
+          end
+          new(scoped_documents)
         end
 
         def simple_types
@@ -22,24 +32,39 @@ module Virtus
           @attributes ||= xpath('xs:schema/xs:attribute')
         end
 
-        private
-
-        attr_reader :xsd_documents
-
-        def xpath(xpath)
-          xsd_documents.map { |doc| doc.xpath(xpath) }.inject { |all, nodes| all + nodes }
+        def [](namespace)
+          namespace = scoped_documents.map do |doc|
+            doc.namespaces["xmlns:#{namespace}"]
+          end.compact.first || namespace
+          Scope.new([registered_documents[namespace]])
         end
 
-        def collect_xsd_documents(path, processed_paths = Set.new)
-          return [] if processed_paths.include?(path)
-          processed_paths.add(path)
-          document = Nokogiri::XML(File.read(path))
-          nodes = document.xpath('xs:schema/xs:include')
-          included_paths = nodes.map { |node| File.expand_path(node['schemaLocation'], File.dirname(path)) }
-          included_documents = included_paths.inject([]) { |agg, included_path|
-            agg.concat(collect_xsd_documents(included_path, processed_paths))
-          }
-          included_documents + [document]
+        private
+
+        attr_reader :scoped_documents
+
+        def initialize(scoped_documents)
+          @scoped_documents = []
+          scoped_documents.each { |doc| add(doc) }
+        end
+
+        def xpath(xpath)
+          scoped_documents.map { |doc| doc.xpath(xpath) }.inject { |all, nodes| all + nodes }
+        end
+
+        def registered_documents
+          @registered_documents ||= {}
+        end
+
+        def register(namespace, document)
+          registered_documents[namespace] = document
+        end
+
+        def add(document)
+          scoped_documents << document
+          ([document] + document.imports).each do |doc|
+            register(doc.namespace, doc) if doc.namespace
+          end
         end
       end
     end
