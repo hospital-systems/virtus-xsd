@@ -12,14 +12,12 @@ module Virtus
             next_document = unprocessed_documents.shift
             next if scoped_documents.include?(next_document)
             scoped_documents << next_document
-            unprocessed_documents.concat(next_document.includes.map { |include| Document.load(include) })
+            unprocessed_documents.concat(next_document.includes.map { |include| Document.load(include.path) })
           end
           scope = new(scoped_documents, root_scope)
           scope.register(root_document.namespace, scope) if root_document.namespace
-          root_document.xpath('xs:schema/xs:import').each do |import|
-            namespace = import['namespace']
-            imported_path = File.expand_path(import['schemaLocation'], File.dirname(path))
-            Scope.load(imported_path, scope) unless scope.registry[namespace]
+          root_document.imports.each do |import|
+            Scope.load(import.path, scope) unless scope.registry[import.namespace]
           end
           scope
         end

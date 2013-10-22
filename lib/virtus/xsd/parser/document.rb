@@ -2,6 +2,9 @@ module Virtus
   module Xsd
     class Parser
       class Document
+        Import = Struct.new(:namespace, :path)
+        Include = Struct.new(:path)
+
         attr_reader :path
 
         def self.load(path)
@@ -18,11 +21,15 @@ module Virtus
         end
 
         def includes
-          @include_paths ||= xpath('xs:schema/xs:include').map { |node| expand_path(node['schemaLocation']) }
+          @includes ||= xpath('xs:schema/xs:include').map do |node|
+            Include.new(expand_path(node['schemaLocation']))
+          end
         end
 
         def imports
-          @import_paths ||= xpath('xs:schema/xs:import').map { |node| expand_path(node['schemaLocation']) }
+          @imports ||= xpath('xs:schema/xs:import').map do |node|
+            Import.new(node['namespace'], expand_path(node['schemaLocation']))
+          end
         end
 
         def namespace
