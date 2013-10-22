@@ -18,11 +18,11 @@ module Virtus
         end
 
         def includes
-          @includes ||= xpath('xs:schema/xs:include').map { |node| load_relative(node['schemaLocation']) }
+          @include_paths ||= xpath('xs:schema/xs:include').map { |node| expand_path(node['schemaLocation']) }
         end
 
         def imports
-          @imports ||= xpath('xs:schema/xs:import').map { |node| load_relative(node['schemaLocation']) }
+          @import_paths ||= xpath('xs:schema/xs:import').map { |node| expand_path(node['schemaLocation']) }
         end
 
         def namespace
@@ -36,8 +36,8 @@ module Virtus
           @path = path
         end
 
-        def load_relative(relative_path)
-          Document.load(File.expand_path(relative_path, File.dirname(self.path)))
+        def expand_path(relative_path)
+          File.expand_path(relative_path, File.dirname(self.path))
         end
       end
     end

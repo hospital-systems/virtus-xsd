@@ -4,16 +4,24 @@ module Virtus
   module Xsd
     class Parser
       class Scope
-        def self.load(path)
+        def self.load(path, root_scope = nil)
+          root_document = Document.load(path)
           scoped_documents = []
-          unprocessed_documents = [Document.load(path)]
+          unprocessed_documents = [root_document]
           until unprocessed_documents.empty?
             next_document = unprocessed_documents.shift
             next if scoped_documents.include?(next_document)
             scoped_documents << next_document
-            unprocessed_documents.concat(next_document.includes)
+            unprocessed_documents.concat(next_document.includes.map { |include| Document.load(include) })
           end
-          new(scoped_documents)
+          scope = new(scoped_documents, root_scope)
+          scope.register(root_document.namespace, scope) if root_document.namespace
+          root_document.xpath('xs:schema/xs:import').each do |import|
+            namespace = import['namespace']
+            imported_path = File.expand_path(import['schemaLocation'], File.dirname(path))
+            Scope.load(imported_path, scope) unless scope.registry[namespace]
+          end
+          scope
         end
 
         def simple_types
@@ -36,35 +44,24 @@ module Virtus
           namespace = scoped_documents.map do |doc|
             doc.namespaces["xmlns:#{namespace}"]
           end.compact.first || namespace
-          Scope.new([registered_documents[namespace]])
+          registry[namespace]
         end
 
-        private
+        def register(namespace, document)
+          registry[namespace] = document
+        end
 
-        attr_reader :scoped_documents
+        attr_reader :scoped_documents, :registry
 
-        def initialize(scoped_documents)
-          @scoped_documents = []
-          scoped_documents.each { |doc| add(doc) }
+        protected
+
+        def initialize(scoped_documents, root_scope = nil)
+          @scoped_documents = scoped_documents
+          @registry = root_scope ? root_scope.registry : {}
         end
 
         def xpath(xpath)
           scoped_documents.map { |doc| doc.xpath(xpath) }.inject { |all, nodes| all + nodes }
-        end
-
-        def registered_documents
-          @registered_documents ||= {}
-        end
-
-        def register(namespace, document)
-          registered_documents[namespace] = document
-        end
-
-        def add(document)
-          scoped_documents << document
-          ([document] + document.imports).each do |doc|
-            register(doc.namespace, doc) if doc.namespace
-          end
         end
       end
     end
