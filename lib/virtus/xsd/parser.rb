@@ -5,7 +5,6 @@ require 'virtus/xsd/parser/lookup_context'
 module Virtus
   module Xsd
     class Parser
-
       def self.parse(xsd_path, config = {})
         new(xsd_path, config).parse
       end
@@ -13,26 +12,19 @@ module Virtus
       def initialize(xsd_path, config = {})
         @scope = DocumentSet.load(xsd_path)
         @config = config
+        @type_registry = {}
       end
 
       def parse
-        collect_type_definitions
-        type_registry.values
+        scope.scoped_documents.map do |doc|
+          doc.types.map { |type| get_type_definition(type) }
+        end.flatten
       end
 
       protected
 
       attr_reader :scope
-      attr_accessor :type_registry
-
-      def fill_attributes(lookup_context, type_definition, node)
-        type_definition.superclass = get_superclass(lookup_context, node)
-        attributes = collect_attributes(lookup_context, node)
-        attributes += collect_extended_attributes(lookup_context, node)
-        attributes.each do |attr|
-          type_definition.attributes[attr.name] = attr
-        end
-      end
+      attr_reader :type_registry
 
       def get_superclass(lookup_context, node)
         xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
@@ -60,33 +52,37 @@ module Virtus
         end
       end
 
-      def collect_type_definitions
-        self.type_registry = {}
-        scope.scoped_documents.each do |doc|
-          doc.types.each do |type|
-            build_type_definition(type)
-          end
-        end
-        self.type_registry = type_registry.each_with_object({}) do |(_, typedef), acc|
-          acc[typedef.name] = typedef
-        end
+      def get_type_definition(type, parent_lookup_context = nil)
+        type_registry[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
       end
 
-      def get_type_definition(type, parent_lookup_context = nil)
-        type_registry[type] || build_type_definition(type, parent_lookup_context)
+      def override_type(type)
+        if @config.key?(type['name'])
+          define_type(type, @config[type['name']].symbolize_keys)
+        end
       end
 
       def build_type_definition(type, parent_lookup_context = nil)
-        if @config.key?(type['name'])
-          type_info = @config[type['name']].symbolize_keys
-          type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
-        else
+        define_type(type, name: type['name']) do |type_definition|
           lookup_context = LookupContext.create(type.document, parent_lookup_context)
-          type_definition = TypeDefinition.new(type['name'])
-          type_registry[type] = type_definition
+          type_definition.superclass = get_superclass(lookup_context, type.node)
+
           fill_attributes(lookup_context, type_definition, type.node)
-          type_definition
         end
+      end
+
+      def fill_attributes(lookup_context, type_definition, node)
+        attributes = collect_attributes(lookup_context, node)
+        attributes += collect_extended_attributes(lookup_context, node)
+        attributes.each do |attr|
+          type_definition.attributes[attr.name] = attr
+        end
+      end
+
+      def define_type(type, type_info, &block)
+        type_definition = type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
+        yield(type_definition) if block_given?
+        type_definition
       end
 
       def base_type_definitions
