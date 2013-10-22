@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<xs:schema targetNamespace="urn:hospital-systems-com:v1" xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:element name="population" type="xs:integer"/>
+<xs:schema targetNamespace="urn:hospital-systems-com:v1" xmlns:sample="urn:sample-com:v1" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="population" type="sample:quantity"/>
 </xs:schema>
