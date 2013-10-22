@@ -1,12 +1,10 @@
 require 'active_support/core_ext/hash/keys'
 require 'virtus/xsd/parser/document_set'
-require 'virtus/xsd/parser/queries'
 require 'virtus/xsd/parser/lookup_context'
 
 module Virtus
   module Xsd
     class Parser
-      include Queries
 
       def self.parse(xsd_path, config = {})
         new(xsd_path, config).parse
