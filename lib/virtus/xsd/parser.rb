@@ -26,32 +26,6 @@ module Virtus
       attr_reader :scope
       attr_reader :type_registry
 
-      def get_superclass(lookup_context, node)
-        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
-        base = node.xpath(xpath).first
-        base && get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
-      end
-
-      def collect_extended_attributes(lookup_context, node)
-        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
-          collect_attributes(lookup_context, extension_node)
-        end.flatten
-      end
-
-      def collect_attributes(lookup_context, node)
-        (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
-          attr_name = element['name'] || without_namespace(element['ref'])
-          if (base_type_definition = base_type_definitions[element['type']])
-            AttributeDefinition.new(attr_name, base_type_definition)
-          else
-            attr_type = resolve_type(lookup_context, element)
-            attr_typedef = get_type_definition(attr_type, lookup_context)
-            #raise "Unknown type: #{attr_type}" unless type_registry.key?(attr_type)
-            AttributeDefinition.new(attr_name, attr_typedef)
-          end
-        end
-      end
-
       def get_type_definition(type, parent_lookup_context = nil)
         type_registry[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
       end
@@ -71,6 +45,14 @@ module Virtus
         end
       end
 
+      def get_superclass(lookup_context, node)
+        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
+        if (base = node.xpath(xpath).first)
+          get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
+        end
+      end
+
+
       def fill_attributes(lookup_context, type_definition, node)
         attributes = collect_attributes(lookup_context, node)
         attributes += collect_extended_attributes(lookup_context, node)
@@ -79,19 +61,46 @@ module Virtus
         end
       end
 
+      def collect_extended_attributes(lookup_context, node)
+        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
+          collect_attributes(lookup_context, extension_node)
+        end.flatten
+      end
+
+      def collect_attributes(lookup_context, node)
+        attributes = node.xpath('xs:attribute')
+        elements = node.xpath('xs:sequence/xs:element')
+
+        (attributes + elements).map do |element|
+          define_attribute(element, lookup_context, node)
+        end
+      end
+
+      def define_attribute(element, lookup_context, node)
+        attr_name = element['name'] || without_namespace(element['ref'])
+
+        if (base_type_definition = base_type_definitions[element['type']])
+          AttributeDefinition.new(attr_name, base_type_definition)
+        else
+          attr_type = resolve_type(lookup_context, element)
+          attr_typedef = get_type_definition(attr_type, lookup_context)
+          AttributeDefinition.new(attr_name, attr_typedef)
+        end
+      end
+
       def define_type(type, type_info, &block)
-        type_definition = type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
-        yield(type_definition) if block_given?
-        type_definition
+        (type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)).tap do |type_definition|
+          yield(type_definition) if block_given?
+        end
       end
 
       def base_type_definitions
         @base_type_definitions ||= {
-          'xs:string' => TypeDefinition.new('String'),
-          'xs:decimal' => TypeDefinition.new('Numeric'),
-          'xs:float' => TypeDefinition.new('Float'),
-          'xs:integer' => TypeDefinition.new('Integer'),
-          'xs:boolean' => TypeDefinition.new('Boolean')
+            'xs:string' => TypeDefinition.new('String'),
+            'xs:decimal' => TypeDefinition.new('Numeric'),
+            'xs:float' => TypeDefinition.new('Float'),
+            'xs:integer' => TypeDefinition.new('Integer'),
+            'xs:boolean' => TypeDefinition.new('Boolean')
         }
       end
 
@@ -100,13 +109,16 @@ module Virtus
       end
 
       def resolve_type(lookup_context, node)
-        if node['ref']
-          referenced_node = lookup_context.lookup_attribute(node['ref']) ||
-            lookup_context.lookup_element(node['ref'])
-          fail "Can't find referenced #{node.name} by name '#{node['ref']}'" if referenced_node.nil?
-          LookupContext.create(referenced_node.document, lookup_context).lookup_type(referenced_node['type'])
-        else
-          lookup_context.lookup_type(node['type'])
+        resolve_type_by_ref(lookup_context, node) || lookup_context.lookup_type(node['type'])
+      end
+
+      def resolve_type_by_ref(lookup_context, node)
+        if (ref = node['ref'])
+          ref_node = lookup_context.lookup_attribute(ref) || lookup_context.lookup_element(ref)
+          fail "Can't find referenced #{node.name} by name '#{ref}'" if ref_node.nil?
+
+          ref_lookup_content = LookupContext.create(ref_node.document, lookup_context)
+          ref_lookup_content.lookup_type(ref_node['type'])
         end
       end
     end
