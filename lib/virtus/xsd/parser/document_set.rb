@@ -5,21 +5,33 @@ module Virtus
     class Parser
       class DocumentSet
         def self.load(path, root_scope = nil)
-          root_document = Document.load(path)
-          scoped_documents = []
-          unprocessed_documents = [root_document]
-          until unprocessed_documents.empty?
-            next_document = unprocessed_documents.shift
-            next if scoped_documents.include?(next_document)
-            scoped_documents << next_document
-            unprocessed_documents.concat(next_document.includes.map { |include| Document.load(include.path) })
+          doc = Document.load(path)
+          documents = load_recursive(doc)
+
+          new(documents, root_scope) do |scope|
+            scope.register(doc.namespace, scope) if doc.namespace
+            load_imports(doc, scope)
           end
-          scope = new(scoped_documents, root_scope)
-          scope.register(root_document.namespace, scope) if root_document.namespace
-          root_document.imports.each do |import|
-            DocumentSet.load(import.path, scope) unless scope.registry[import.namespace]
+        end
+
+        def self.load_recursive(doc)
+          unprocessed_documents = [doc]
+
+          unprocessed_documents.each_with_object([]) do |current_document, scoped_documents|
+            next if scoped_documents.include?(current_document)
+            scoped_documents << current_document
+
+            included_documents = current_document.includes.map { |include| Document.load(include.path) }
+            unprocessed_documents.concat(included_documents)
           end
-          scope
+        end
+
+        def self.load_imports(doc, scope)
+          doc.imports.each do |import|
+            unless scope.registered?(import.namespace)
+              load(import.path, scope)
+            end
+          end
         end
 
         def root_document
@@ -65,13 +77,18 @@ module Virtus
           registry[namespace] = document
         end
 
+        def registered?(namespace)
+          registry.key?(namespace)
+        end
+
         attr_reader :scoped_documents, :registry
 
         protected
 
-        def initialize(scoped_documents, root_scope = nil)
+        def initialize(scoped_documents, root_scope = nil, &block)
           @scoped_documents = scoped_documents
           @registry = root_scope ? root_scope.registry : {}
+          yield(self) if block_given?
         end
 
         def xpath(xpath)
