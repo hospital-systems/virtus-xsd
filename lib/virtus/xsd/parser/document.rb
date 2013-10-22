@@ -4,6 +4,11 @@ module Virtus
       class Document
         Import = Struct.new(:namespace, :path)
         Include = Struct.new(:path)
+        Node = Struct.new(:document, :node) do
+          def [](attr_name)
+            node[attr_name]
+          end
+        end
 
         attr_reader :path
 
@@ -30,6 +35,22 @@ module Virtus
           @imports ||= xpath('xs:schema/xs:import').map do |node|
             Import.new(node['namespace'], expand_path(node['schemaLocation']))
           end
+        end
+
+        def types
+          @types ||= find_nodes('xs:schema/*[local-name()="simpleType" or local-name()="complexType"]')
+        end
+
+        def element_nodes
+          @element_nodes ||= find_nodes('xs:schema/xs:element')
+        end
+
+        def attribute_nodes
+          @attribute_nodes ||= find_nodes('xs:schema/xs:attribute')
+        end
+
+        def find_nodes(xpath)
+          @document.xpath(xpath).map { |node| Node.new(self, node) }
         end
 
         def namespace

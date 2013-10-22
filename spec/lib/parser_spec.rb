@@ -17,7 +17,7 @@ describe Virtus::Xsd::Parser do
     country.should_not be_nil
     country.name.should == 'Country'
     country.should have_attribute('name').of_type('String')
-    country.should have_attribute('population').of_type('Integer')
+    country.should have_attribute('population').of_type('quantity')
     country.should have_attribute('city').of_type('City')
   end
 

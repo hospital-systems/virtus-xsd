@@ -1,6 +1,7 @@
 require 'active_support/core_ext/hash/keys'
-require 'virtus/xsd/parser/scope'
+require 'virtus/xsd/parser/document_set'
 require 'virtus/xsd/parser/queries'
+require 'virtus/xsd/parser/lookup_context'
 
 module Virtus
   module Xsd
@@ -12,15 +13,12 @@ module Virtus
       end
 
       def initialize(xsd_path, config = {})
-        @scope = Scope.load(xsd_path)
+        @scope = DocumentSet.load(xsd_path)
         @config = config
       end
 
       def parse
-        nodes = scope.simple_types + scope.complex_types
-        collect_type_definitions(nodes)
-        apply_overrides
-        fill_attributes(nodes)
+        collect_type_definitions
         type_registry.values
       end
 
@@ -29,44 +27,68 @@ module Virtus
       attr_reader :scope
       attr_accessor :type_registry
 
-      def fill_attributes(nodes)
-        nodes.each do |node|
-          type_definition = type_registry[node['name']]
-          next if type_overridden?(type_definition)
-          type_definition.superclass = get_superclass(node)
-          attributes = collect_attributes(node)
-          attributes += collect_extended_attributes(node)
-          attributes.each do |attr|
-            type_definition.attributes[attr.name] = attr
+      def fill_attributes(lookup_context, type_definition, node)
+        type_definition.superclass = get_superclass(lookup_context, node)
+        attributes = collect_attributes(lookup_context, node)
+        attributes += collect_extended_attributes(lookup_context, node)
+        attributes.each do |attr|
+          type_definition.attributes[attr.name] = attr
+        end
+      end
+
+      def get_superclass(lookup_context, node)
+        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
+        base = node.xpath(xpath).first
+        base && get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
+      end
+
+      def collect_extended_attributes(lookup_context, node)
+        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
+          collect_attributes(lookup_context, extension_node)
+        end.flatten
+      end
+
+      def collect_attributes(lookup_context, node)
+        (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
+          attr_name = element['name'] || without_namespace(element['ref'])
+          if (base_type_definition = base_type_definitions[element['type']])
+            AttributeDefinition.new(attr_name, base_type_definition)
+          else
+            attr_type = resolve_type(lookup_context, element)
+            attr_typedef = get_type_definition(attr_type, lookup_context)
+            #raise "Unknown type: #{attr_type}" unless type_registry.key?(attr_type)
+            AttributeDefinition.new(attr_name, attr_typedef)
           end
         end
       end
 
-      def get_superclass(node)
-        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
-        base = node.xpath(xpath).first
-        base && type_registry[base.text]
-      end
-
-      def collect_extended_attributes(node)
-        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
-          collect_attributes(extension_node)
-        end.flatten
-      end
-
-      def collect_attributes(node)
-        (node.xpath('xs:attribute') + node.xpath('xs:sequence/xs:element')).map do |element|
-          attr_name = element['name'] || without_namespace(element['ref'])
-          attr_type = resolve_type(element)
-          raise "Unknown type: #{attr_type}" unless type_registry.key?(attr_type)
-          AttributeDefinition.new(attr_name, type_registry[attr_type])
+      def collect_type_definitions
+        self.type_registry = {}
+        scope.scoped_documents.each do |doc|
+          doc.types.each do |type|
+            build_type_definition(type)
+          end
+        end
+        self.type_registry = type_registry.each_with_object({}) do |(_, typedef), acc|
+          acc[typedef.name] = typedef
         end
       end
 
-      def collect_type_definitions(nodes)
-        self.type_registry = nodes.each_with_object({}) do |node, type_definitions|
-          type_definitions[node['name']] = TypeDefinition.new(node['name'])
-        end.merge(base_type_definitions)
+      def get_type_definition(type, parent_lookup_context = nil)
+        type_registry[type] || build_type_definition(type, parent_lookup_context)
+      end
+
+      def build_type_definition(type, parent_lookup_context = nil)
+        if @config.key?(type['name'])
+          type_info = @config[type['name']].symbolize_keys
+          type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
+        else
+          lookup_context = LookupContext.create(type.document, parent_lookup_context)
+          type_definition = TypeDefinition.new(type['name'])
+          type_registry[type] = type_definition
+          fill_attributes(lookup_context, type_definition, type.node)
+          type_definition
+        end
       end
 
       def base_type_definitions
@@ -79,28 +101,18 @@ module Virtus
         }
       end
 
-      def type_overridden?(type_definition)
-        @config.key?(type_definition.name)
-      end
-
-      def apply_overrides
-        @config.each_pair do |type_name, type_info|
-          type_info = type_info.symbolize_keys
-          type_registry[type_name] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
-        end
-      end
-
       def without_namespace(name)
         name.split(':').last
       end
 
-      def resolve_type(node)
+      def resolve_type(lookup_context, node)
         if node['ref']
-          referenced_node = find_attribute_or_element_by_name(node['ref'])
+          referenced_node = lookup_context.lookup_attribute(node['ref']) ||
+            lookup_context.lookup_element(node['ref'])
           fail "Can't find referenced #{node.name} by name '#{node['ref']}'" if referenced_node.nil?
-          referenced_node['type']
+          LookupContext.create(referenced_node.document, lookup_context).lookup_type(referenced_node['type'])
         else
-          node['type']
+          lookup_context.lookup_type(node['type'])
         end
       end
     end

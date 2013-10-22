@@ -3,7 +3,7 @@ require 'virtus/xsd/parser/document'
 module Virtus
   module Xsd
     class Parser
-      class Scope
+      class DocumentSet
         def self.load(path, root_scope = nil)
           root_document = Document.load(path)
           scoped_documents = []
@@ -17,9 +17,25 @@ module Virtus
           scope = new(scoped_documents, root_scope)
           scope.register(root_document.namespace, scope) if root_document.namespace
           root_document.imports.each do |import|
-            Scope.load(import.path, scope) unless scope.registry[import.namespace]
+            DocumentSet.load(import.path, scope) unless scope.registry[import.namespace]
           end
           scope
+        end
+
+        def root_document
+          scoped_documents.first
+        end
+
+        def find_type(name)
+          (@types ||= index(:types))[name]
+        end
+
+        def find_element(name)
+          (@elements ||= index(:element_nodes))[name]
+        end
+
+        def find_attribute(name)
+          (@attributes ||= index(:attribute_nodes))[name]
         end
 
         def simple_types
@@ -60,6 +76,14 @@ module Virtus
 
         def xpath(xpath)
           scoped_documents.map { |doc| doc.xpath(xpath) }.inject { |all, nodes| all + nodes }
+        end
+
+        def index(collection)
+          scoped_documents.each_with_object({}) do |doc, index|
+            doc.send(collection).each do |item|
+              index[item['name']] = item
+            end
+          end
         end
       end
     end
