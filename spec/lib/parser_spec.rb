@@ -47,7 +47,13 @@ describe Virtus::Xsd::Parser do
   it 'should parse list types' do
     country = parsed_types['Country']
     country.should have_attribute('languages')
-    country['languages'].type.item_type.name.should == 'String'
+    country['languages'].type.item_type.name.should == 'Language'
+  end
+
+  it 'should generate multiple attributes' do
+    country = parsed_types['Country']
+    country['name'].should_not be_multiple
+    country['city'].should be_multiple
   end
 
   class HaveAttributeMatcher

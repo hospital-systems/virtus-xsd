@@ -25,10 +25,15 @@ module Virtus
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
             type_def.attributes.values.each do |attr|
-              builder.invoke_pretty 'attribute', ":#{attr.name}", make_type_name(attr.type)
+              builder.invoke_pretty 'attribute', ":#{attr.name}", make_attribute_type(attr)
             end
           end
         end
+      end
+
+      def make_attribute_type(attr)
+        type_name = make_type_name(attr.type)
+        attr.multiple? ? "Array[#{type_name}]" : type_name
       end
 
       def make_type_name(type)

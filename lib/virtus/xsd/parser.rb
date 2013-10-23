@@ -63,7 +63,9 @@ module Virtus
         attr_name = attr_node['name'] || without_namespace(attr_node['ref'])
         attr_type = resolve_type(lookup_context, attr_node)
         attr_typedef = get_type_definition(attr_type, lookup_context)
-        type_definition.attributes[attr_name] = AttributeDefinition.new(attr_name, attr_typedef)
+        multiple = attr_node['maxOccurs'] == 'unbounded'
+        type_definition.attributes[attr_name] =
+          Virtus::Xsd::AttributeDefinition.new(attr_name, attr_typedef, multiple: multiple)
       end
 
       def define_type(type, type_info)
