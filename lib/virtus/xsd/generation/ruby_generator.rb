@@ -15,29 +15,33 @@ module Virtus
 
       private
 
-      def generate_class(type_definition)
-        return if type_definition.base? || type_definition.simple?
-        output_for(type_definition) do |output|
+      def generate_class(type_def)
+        return if type_def.base? || type_def.simple?
+        output_for(type_def) do |output|
           builder = Generation::RubyCodeBuilder.new(output)
-          builder.class_(type_definition.name,
-                         superclass: type_definition.superclass && type_definition.superclass.name,
+          builder.class_(get_sanitized_type_name(type_def),
+                         superclass: type_def.superclass && get_sanitized_type_name(type_def.superclass),
                          module_name: module_name) do
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
-            type_definition.attributes.values.each do |attr|
-              builder.invoke_pretty 'attribute', ":#{attr.name}", infer_type(attr.type)
+            type_def.attributes.values.each do |attr|
+              builder.invoke_pretty 'attribute', ":#{attr.name}", make_type_name(attr.type)
             end
           end
         end
       end
 
-      def infer_type(type)
-        return type.name if type.base?
+      def make_type_name(type)
+        return get_sanitized_type_name(type) if type.base?
         if type.item_type
-          "Array[#{infer_type(type.item_type)}]"
+          "Array[#{make_type_name(type.item_type)}]"
         else
-          type.simple? ? infer_type(type.superclass) : type.name
+          type.simple? ? make_type_name(type.superclass) : get_sanitized_type_name(type)
         end
+      end
+
+      def get_sanitized_type_name(type)
+        type.name.split(/\.|_/).map(&:camelcase).join('_')
       end
 
       def output_for(type_definition)
@@ -51,7 +55,7 @@ module Virtus
 
       def generate_file_name(type_definition)
         module_path = (module_name || '').underscore.split('/')
-        File.join(output_dir, *module_path, "#{type_definition.name.underscore}.rb")
+        File.join(output_dir, *module_path, "#{get_sanitized_type_name(type_definition).underscore}.rb")
       end
 
       def output_dir
