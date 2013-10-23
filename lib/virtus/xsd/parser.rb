@@ -1,3 +1,4 @@
+require 'ostruct'
 require 'active_support/core_ext/hash/keys'
 require 'virtus/xsd/parser/document_set'
 require 'virtus/xsd/parser/lookup_context'
@@ -35,47 +36,34 @@ module Virtus
       end
 
       def override_type(type)
-        if (type_info = type_overrides[type['name']])
+        if (type_info = type_overrides[type.type.name])
           define_type(type, type_info.symbolize_keys)
         end
       end
 
       def build_type_definition(type, parent_lookup_context = nil)
-        define_type(type, name: type['name'], simple: type.name == 'simpleType') do |type_definition|
+        define_type(type, name: type.type.name, simple: !type.type.complex) do |type_definition|
           lookup_context = LookupContext.create(type.document, parent_lookup_context)
-          type_definition.superclass = get_superclass(lookup_context, type.node)
+          type_definition.superclass = get_superclass(lookup_context, type.type)
 
-          fill_attributes(lookup_context, type_definition, type.node)
+          fill_attributes(lookup_context, type_definition, type.type)
         end
       end
 
-      def get_superclass(lookup_context, node)
-        xpath = '(xs:complexContent/xs:extension | xs:complexContent/xs:restriction | xs:restriction)/@base'
-        if (base = node.xpath(xpath).first)
-          base_type_definitions[base.text] ||
-            get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
-        end
+      def get_superclass(lookup_context, type)
+        return unless type.base
+        base_type_definitions[type.base] ||
+          get_type_definition(lookup_context.lookup_type(type.base), lookup_context)
       end
 
-      def fill_attributes(lookup_context, type_definition, node)
-        attributes = collect_attributes(lookup_context, node)
-        attributes += collect_extended_attributes(lookup_context, node)
-        attributes.each do |attr|
+      def fill_attributes(lookup_context, type_definition, type)
+        collect_attributes(lookup_context, type).each do |attr|
           type_definition.attributes[attr.name] = attr
         end
       end
 
-      def collect_extended_attributes(lookup_context, node)
-        node.xpath('xs:complexContent/xs:extension').map do |extension_node|
-          collect_attributes(lookup_context, extension_node)
-        end.flatten
-      end
-
-      def collect_attributes(lookup_context, node)
-        attributes = node.xpath('xs:attribute')
-        elements = node.xpath('xs:sequence/xs:element')
-
-        (attributes + elements).map do |element|
+      def collect_attributes(lookup_context, type)
+        type.attributes.map do |element|
           define_attribute(element, lookup_context)
         end
       end
@@ -126,15 +114,23 @@ module Virtus
         end
       end
 
+      def add_base_type(doc, type_name, opts = {})
+        doc.types ||= []
+        doc.types << OpenStruct.new(name: type_name).tap do |type|
+          define_type(type, opts)
+        end
+      end
+
+      def base_document
+        Document.new.tap do |doc|
+          doc.urn = 'http://www.w3.org/2001/XMLSchema'
+          add_base_type(doc, 'string', name: 'String')
+        end
+      end
+
       def root_lookup_context
         @root_lookup_context ||= LookupContext.new.tap do |ctx|
-          #ctx.add('xs', DocumentSet.new([]))
-          #Document.new.tap do |doc|
-          #  doc.types = [
-          #    Document::SimpleType.new(doc, 'integer')
-          #  ]
-          #end
-          #add_type(doc, 'string', name: 'String')
+          ctx.add('xs', DocumentSet.new([base_document]))
         end
       end
     end

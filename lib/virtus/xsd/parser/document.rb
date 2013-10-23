@@ -5,6 +5,13 @@ module Virtus
         Import = Struct.new(:namespace, :path)
         Include = Struct.new(:path)
         Namespace = Struct.new(:prefix, :urn)
+        Type = Struct.new(:name, :complex, :base, :attributes)
+        TypeNode = Struct.new(:document, :type) do
+          def [](attr_name)
+            return type.name if attr_name == 'name'
+            raise "No #{attr_name.inspect}"
+          end
+        end
         Node = Struct.new(:document, :node) do
           def name
             node.name
@@ -15,7 +22,8 @@ module Virtus
           end
         end
 
-        attr_accessor :urn, :path, :namespaces, :includes, :imports, :types, :element_nodes, :attribute_nodes
+        attr_accessor :urn, :path, :namespaces, :includes, :imports
+        attr_accessor :types, :element_nodes, :attribute_nodes
 
         def self.load(path)
           @cache ||= {}
@@ -29,7 +37,19 @@ module Virtus
             doc.imports = xml.xpath('xs:schema/xs:import').map { |node|
               Import.new(node['namespace'], File.expand_path(node['schemaLocation'], File.dirname(path)))
             }
-            doc.types = find_nodes(xml, 'xs:schema/*[local-name()="simpleType" or local-name()="complexType"]', doc)
+            doc.types = xml.xpath('xs:schema/xs:simpleType').map do |node|
+              restriction = node.xpath('xs:restriction').first
+              Type.new(node['name'], false, restriction && restriction['base'], [])
+            end
+            doc.types += xml.xpath('xs:schema/xs:complexType').map do |node|
+              extension = node.xpath('xs:complexContent/xs:extension').first
+              restriction = node.xpath('xs:complexContent/xs:restriction').first
+              base = extension && extension['base'] || restriction && restriction['base']
+              attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element')
+              Type.new(node['name'], true, base, attributes)
+            end
+            #FIXME: should be in LookupContext
+            doc.types = doc.types.map { |type| TypeNode.new(doc, type) }
             doc.element_nodes = find_nodes(xml, 'xs:schema/xs:element', doc)
             doc.attribute_nodes = find_nodes(xml, 'xs:schema/xs:attribute', doc)
             doc.urn = xml.root['targetNamespace']
