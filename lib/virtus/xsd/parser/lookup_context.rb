@@ -5,24 +5,25 @@ module Virtus
     class Parser
       class LookupContext
         def self.create(document, parent_lookup_context = nil)
-          mapping = {nil => DocumentSet.load(document.path)}
+          ctx = new
+          ctx.add(nil, DocumentSet.load(document.path))
           if parent_lookup_context
             document.namespaces.each do |namespace|
               parent_lookup_context.mapping.each_value do |document_set|
-                mapping[namespace.prefix] = document_set if document_set.root_document.urn == namespace.urn
+                ctx.add(namespace.prefix, document_set) if document_set.root_document.urn == namespace.urn
               end
             end
           end
           document.imports.each do |import|
             namespace = document.namespaces.find { |ns| ns.urn == import.namespace }
-            mapping[namespace.prefix] = DocumentSet.load(import.path)
+            ctx.add(namespace.prefix, DocumentSet.load(import.path))
           end
-          new(mapping)
+          ctx
         end
 
         def lookup_type(type_name)
-          name, namespace = type_name.split(':').reverse
-          @mapping[namespace].find_type(name)
+          name, prefix = type_name.split(':').reverse
+          @mapping[prefix].find_type(name)
         end
 
         def lookup_attribute(attribute_name)
@@ -37,8 +38,12 @@ module Virtus
 
         attr_reader :mapping
 
-        def initialize(mapping)
-          @mapping = mapping
+        def initialize
+          @mapping = {}
+        end
+
+        def add(prefix, document_set)
+          mapping[prefix] = document_set
         end
       end
     end

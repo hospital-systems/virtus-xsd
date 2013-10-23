@@ -17,7 +17,7 @@ module Virtus
 
       def parse
         scope.scoped_documents.map do |doc|
-          doc.types.map { |type| get_type_definition(type) }
+          doc.types.map { |type| get_type_definition(type, root_lookup_context) }
         end.flatten
       end
 
@@ -123,6 +123,18 @@ module Virtus
 
           ref_lookup_content = LookupContext.create(ref_node.document, lookup_context)
           ref_lookup_content.lookup_type(ref_node['type'])
+        end
+      end
+
+      def root_lookup_context
+        @root_lookup_context ||= LookupContext.new.tap do |ctx|
+          #ctx.add('xs', DocumentSet.new([]))
+          #Document.new.tap do |doc|
+          #  doc.types = [
+          #    Document::SimpleType.new(doc, 'integer')
+          #  ]
+          #end
+          #add_type(doc, 'string', name: 'String')
         end
       end
     end

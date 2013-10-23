@@ -57,11 +57,11 @@ module Virtus
 
         attr_reader :scoped_documents
 
-        protected
-
         def initialize(scoped_documents)
           @scoped_documents = scoped_documents
         end
+
+        protected
 
         def xpath(xpath)
           scoped_documents.map { |doc| doc.xpath(xpath) }.inject { |all, nodes| all + nodes }
