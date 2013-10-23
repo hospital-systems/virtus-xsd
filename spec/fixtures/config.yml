@@ -1,3 +1,4 @@
-ANY:
-  name: Object
-  base: true
+types:
+  ANY:
+    name: Object
+    base: true

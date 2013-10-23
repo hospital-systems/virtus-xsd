@@ -32,4 +32,8 @@ describe Virtus::Xsd::RubyGenerator do
   it 'should not generate base types' do
     File.exist?(File.join(output_dir, 'test', 'object.rb')).should be_false
   end
+
+  it 'should not generate simple types' do
+    File.exist?(File.join(output_dir, 'test', 'quantity.rb')).should be_false
+  end
 end

@@ -30,14 +30,18 @@ module Virtus
         type_registry[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
       end
 
+      def type_overrides
+        @type_overrides ||= @config['types'] || {}
+      end
+
       def override_type(type)
-        if @config.key?(type['name'])
-          define_type(type, @config[type['name']].symbolize_keys)
+        if (type_info = type_overrides[type['name']])
+          define_type(type, type_info.symbolize_keys)
         end
       end
 
       def build_type_definition(type, parent_lookup_context = nil)
-        define_type(type, name: type['name']) do |type_definition|
+        define_type(type, name: type['name'], simple: type.name == 'simpleType') do |type_definition|
           lookup_context = LookupContext.create(type.document, parent_lookup_context)
           type_definition.superclass = get_superclass(lookup_context, type.node)
 
@@ -46,9 +50,10 @@ module Virtus
       end
 
       def get_superclass(lookup_context, node)
-        xpath = 'xs:complexContent/*[local-name()="extension" or local-name()="restriction"]/@base'
+        xpath = '(xs:complexContent/xs:extension | xs:complexContent/xs:restriction | xs:restriction)/@base'
         if (base = node.xpath(xpath).first)
-          get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
+          base_type_definitions[base.text] ||
+            get_type_definition(lookup_context.lookup_type(base.text), lookup_context)
         end
       end
 
@@ -87,7 +92,7 @@ module Virtus
         end
       end
 
-      def define_type(type, type_info, &block)
+      def define_type(type, type_info)
         (type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)).tap do |type_definition|
           yield(type_definition) if block_given?
         end
@@ -95,11 +100,11 @@ module Virtus
 
       def base_type_definitions
         @base_type_definitions ||= {
-            'xs:string' => TypeDefinition.new('String'),
-            'xs:decimal' => TypeDefinition.new('Numeric'),
-            'xs:float' => TypeDefinition.new('Float'),
-            'xs:integer' => TypeDefinition.new('Integer'),
-            'xs:boolean' => TypeDefinition.new('Boolean')
+          'xs:string' => TypeDefinition.new('String'),
+          'xs:decimal' => TypeDefinition.new('Numeric'),
+          'xs:float' => TypeDefinition.new('Float'),
+          'xs:integer' => TypeDefinition.new('Integer'),
+          'xs:boolean' => TypeDefinition.new('Boolean')
         }
       end
 

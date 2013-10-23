@@ -16,8 +16,9 @@ describe Virtus::Xsd::Parser do
     country = parsed_types['Country']
     country.should_not be_nil
     country.name.should == 'Country'
+    country.should_not be_simple
     country.should have_attribute('name').of_type('String')
-    country.should have_attribute('population').of_type('Quantity')
+    country.should have_attribute('population').of_type('quantity')
     country.should have_attribute('city').of_type('City')
   end
 
@@ -30,6 +31,11 @@ describe Virtus::Xsd::Parser do
 
   it 'should parse extending types' do
     parsed_types['Object'].should_not be_nil
+  end
+
+  it 'should parse simple types' do
+    quantity = parsed_types['quantity']
+    quantity.should be_simple
   end
 
   class HaveAttributeMatcher

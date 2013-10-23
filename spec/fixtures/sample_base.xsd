@@ -3,7 +3,7 @@
   <xs:complexType name="ANY" abstract="true">
     <xs:attribute name="nullable" type="xs:boolean"/>
   </xs:complexType>
-  <xs:simpleType name="Quantity">
+  <xs:simpleType name="quantity">
     <xs:restriction base="xs:integer">
       <xs:minInclusive value="0"/>
     </xs:restriction>

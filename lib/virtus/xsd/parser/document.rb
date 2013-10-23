@@ -6,6 +6,10 @@ module Virtus
         Include = Struct.new(:path)
         Namespace = Struct.new(:prefix, :urn)
         Node = Struct.new(:document, :node) do
+          def name
+            node.name
+          end
+
           def [](attr_name)
             node[attr_name]
           end

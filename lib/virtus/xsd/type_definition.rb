@@ -27,6 +27,10 @@ module Virtus
         options[:base]
       end
 
+      def simple?
+        options[:simple]
+      end
+
       alias_method :==, :eql?
     end
   end

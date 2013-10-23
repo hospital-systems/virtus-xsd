@@ -16,7 +16,7 @@ module Virtus
       private
 
       def generate_class(type_definition)
-        return if type_definition.base?
+        return if type_definition.base? || type_definition.simple?
         output_for(type_definition) do |output|
           builder = Generation::RubyCodeBuilder.new(output)
           builder.class_(type_definition.name,
@@ -25,10 +25,15 @@ module Virtus
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
             type_definition.attributes.values.each do |attr|
-              builder.invoke_pretty 'attribute', ":#{attr.name}", attr.type.name
+              builder.invoke_pretty 'attribute', ":#{attr.name}", derive_type(attr.type).name
             end
           end
         end
+      end
+
+      def derive_type(type)
+        return type if type.base?
+        type.simple? ? derive_type(type.superclass) : type
       end
 
       def output_for(type_definition)
@@ -51,19 +56,6 @@ module Virtus
 
       def module_name
         @options[:module_name]
-      end
-
-      private
-
-      def within_module(module_name)
-        parts = module_name.split('::', 2)
-        puts "module #{parts.first}"
-        if parts.length > 1
-          module_(parts.second) { yield }
-        else
-          ident { yield }
-        end
-        puts "end"
       end
     end
   end
