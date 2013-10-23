@@ -1,9 +1,10 @@
 module Virtus
   module Xsd
     class TypeDefinition
-      attr_reader :name, :options
-      attr_reader :attributes
+      attr_reader :name
+      attr_reader :attributes, :options
       attr_accessor :superclass
+      attr_accessor :item_type
 
       def initialize(name, opts = {})
         @name = name

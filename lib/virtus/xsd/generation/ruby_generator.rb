@@ -25,15 +25,19 @@ module Virtus
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
             type_definition.attributes.values.each do |attr|
-              builder.invoke_pretty 'attribute', ":#{attr.name}", derive_type(attr.type).name
+              builder.invoke_pretty 'attribute', ":#{attr.name}", infer_type(attr.type)
             end
           end
         end
       end
 
-      def derive_type(type)
-        return type if type.base?
-        type.simple? ? derive_type(type.superclass) : type
+      def infer_type(type)
+        return type.name if type.base?
+        if type.item_type
+          "Array[#{infer_type(type.item_type)}]"
+        else
+          type.simple? ? infer_type(type.superclass) : type.name
+        end
       end
 
       def output_for(type_definition)

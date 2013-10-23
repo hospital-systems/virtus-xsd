@@ -41,22 +41,19 @@ module Virtus
         end
       end
 
-      def build_type_definition(type_ref, parent_lookup_context = nil)
-        define_type(type_ref, name: type_ref.type.name, simple: !type_ref.type.complex) do |type_definition|
-          lookup_context = LookupContext.create(type_ref.document, parent_lookup_context)
-          if type_ref.type.base
-            type_definition.superclass = get_type_definition(lookup_context.lookup_type(type_ref.type.base),
-                                                             lookup_context)
-          end
-          type_ref.type.attributes.map { |attr_node|
-            define_attribute(type_definition, attr_node, lookup_context)
-          }
+      def build_type_definition(type_ref, parent_ctx = nil)
+        type = type_ref.type
+        define_type(type_ref, name: type.name, simple: !type.complex) do |type_def|
+          ctx = LookupContext.create(type_ref.document, parent_ctx)
+          type_def.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
+          type_def.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
+          type.attributes.map { |attr_node| define_attribute(type_def, attr_node, ctx) }
         end
       end
 
-      def define_attribute(type_definition, element, lookup_context)
-        attr_name = element['name'] || without_namespace(element['ref'])
-        attr_type = resolve_type(lookup_context, element)
+      def define_attribute(type_definition, attr_node, lookup_context)
+        attr_name = attr_node['name'] || without_namespace(attr_node['ref'])
+        attr_type = resolve_type(lookup_context, attr_node)
         attr_typedef = get_type_definition(attr_type, lookup_context)
         type_definition.attributes[attr_name] = AttributeDefinition.new(attr_name, attr_typedef)
       end
@@ -71,14 +68,14 @@ module Virtus
         name.split(':').last
       end
 
-      def resolve_type(lookup_context, node)
-        resolve_type_by_ref(lookup_context, node) || lookup_context.lookup_type(node['type'])
+      def resolve_type(lookup_context, attr_node)
+        resolve_type_by_ref(lookup_context, attr_node) || lookup_context.lookup_type(attr_node['type'])
       end
 
-      def resolve_type_by_ref(lookup_context, node)
-        if (ref = node['ref'])
+      def resolve_type_by_ref(lookup_context, attr_node)
+        if (ref = attr_node['ref'])
           ref_node = lookup_context.lookup_attribute(ref) || lookup_context.lookup_element(ref)
-          fail "Can't find referenced #{node.name} by name '#{ref}'" if ref_node.nil?
+          fail "Can't find referenced #{attr_node.name} by name '#{ref}'" if ref_node.nil?
 
           ref_lookup_content = LookupContext.create(ref_node.document, lookup_context)
           ref_lookup_content.lookup_type(ref_node['type'])

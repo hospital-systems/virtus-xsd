@@ -5,8 +5,8 @@ module Virtus
         Import = Struct.new(:namespace, :path)
         Include = Struct.new(:path)
         Namespace = Struct.new(:prefix, :urn)
-        Type = Struct.new(:name, :complex, :base, :attributes)
-        TypeNode = Struct.new(:document, :type) do
+        Type = Struct.new(:name, :complex, :base, :item_type, :attributes)
+        TypeRef = Struct.new(:document, :type) do
           def [](attr_name)
             return type.name if attr_name == 'name'
             raise "No #{attr_name.inspect}"
@@ -39,17 +39,21 @@ module Virtus
             }
             doc.types = xml.xpath('xs:schema/xs:simpleType').map do |node|
               restriction = node.xpath('xs:restriction').first
-              Type.new(node['name'], false, restriction && restriction['base'], [])
+              union = node.xpath('xs:union').first
+              list = node.xpath('xs:list').first
+              base = restriction && restriction['base'] || union && union['memberTypes'].split.first
+              item_type = list && list['itemType']
+              Type.new(node['name'], false, base, item_type, [])
             end
             doc.types += xml.xpath('xs:schema/xs:complexType').map do |node|
               extension = node.xpath('xs:complexContent/xs:extension').first
               restriction = node.xpath('xs:complexContent/xs:restriction').first
               base = extension && extension['base'] || restriction && restriction['base']
               attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element')
-              Type.new(node['name'], true, base, attributes)
+              Type.new(node['name'], true, base, nil, attributes)
             end
             #FIXME: should be in LookupContext
-            doc.types = doc.types.map { |type| TypeNode.new(doc, type) }
+            doc.types = doc.types.map { |type| TypeRef.new(doc, type) }
             doc.element_nodes = find_nodes(xml, 'xs:schema/xs:element', doc)
             doc.attribute_nodes = find_nodes(xml, 'xs:schema/xs:attribute', doc)
             doc.urn = xml.root['targetNamespace']

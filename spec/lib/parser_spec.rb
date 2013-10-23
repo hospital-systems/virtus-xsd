@@ -38,6 +38,18 @@ describe Virtus::Xsd::Parser do
     quantity.should be_simple
   end
 
+  it 'should parse union types' do
+    global_nation = parsed_types['Nationality']
+    global_nation.should be_simple
+    global_nation.superclass.name.should == 'SlavicNationality'
+  end
+
+  it 'should parse list types' do
+    country = parsed_types['Country']
+    country.should have_attribute('languages')
+    country['languages'].type.item_type.name.should == 'String'
+  end
+
   class HaveAttributeMatcher
     attr_reader :failure_message
 

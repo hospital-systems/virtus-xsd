@@ -8,6 +8,32 @@
       <xs:minInclusive value="0"/>
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="SlavicNationality">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Russian"/>
+      <xs:enumeration value="Ukrainian"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="EuropeanNationality">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Englishman"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Nationality">
+    <xs:union memberTypes="SlavicNationality EuropeanNationality">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="American"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+  <xs:simpleType name="Language">
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+  <xs:simpleType name="set_Language">
+    <xs:list itemType="Language"/>
+  </xs:simpleType>
   <xs:complexType name="ST">
     <xs:complexContent>
       <xs:extension base="ANY">
