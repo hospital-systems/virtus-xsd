@@ -94,7 +94,7 @@ module Virtus
 
       def add_base_type(doc, type_name, opts = {})
         doc.types ||= []
-        doc.types << Document::Type.new(type_name, false, nil, []).tap do |type|
+        doc.types << Document::TypeRef.new(doc, Document::Type.new(type_name, false, nil, [])).tap do |type|
           define_type(type, opts.merge(base: true, simple: true))
         end
       end
@@ -109,9 +109,11 @@ module Virtus
           add_base_type(doc, 'boolean', name: 'Boolean')
           add_base_type(doc, 'base64Binary', name: 'String')
           add_base_type(doc, 'NMTOKEN', name: 'String')
+          add_base_type(doc, 'NMTOKENS', name: 'String')
           add_base_type(doc, 'token', name: 'String')
           add_base_type(doc, 'anyURI', name: 'String')
           add_base_type(doc, 'double', name: 'Float')
+          add_base_type(doc, 'ID', name: 'String')
         end
       end
 
