@@ -35,6 +35,10 @@ module Virtus
         @type_overrides ||= @config['types'] || {}
       end
 
+      def type_renames
+        @type_renames ||= @config['names'] || {}
+      end
+
       def override_type(type)
         if (type_info = type_overrides[type.type.name])
           define_type(type, type_info.symbolize_keys)
@@ -43,12 +47,16 @@ module Virtus
 
       def build_type_definition(type_ref, parent_ctx = nil)
         type = type_ref.type
-        define_type(type_ref, name: type.name, simple: !type.complex) do |type_def|
+        define_type(type_ref, name: apply_renaming(type.name), simple: !type.complex) do |type_def|
           ctx = LookupContext.create(type_ref.document, parent_ctx)
           type_def.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
           type_def.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
           type.attributes.map { |attr_node| define_attribute(type_def, attr_node, ctx) }
         end
+      end
+
+      def apply_renaming(name)
+        type_renames.fetch(name, name)
       end
 
       def define_attribute(type_definition, attr_node, lookup_context)
