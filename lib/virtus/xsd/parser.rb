@@ -52,7 +52,6 @@ module Virtus
         end
       end
 
-
       def fill_attributes(lookup_context, type_definition, node)
         attributes = collect_attributes(lookup_context, node)
         attributes += collect_extended_attributes(lookup_context, node)
@@ -72,11 +71,11 @@ module Virtus
         elements = node.xpath('xs:sequence/xs:element')
 
         (attributes + elements).map do |element|
-          define_attribute(element, lookup_context, node)
+          define_attribute(element, lookup_context)
         end
       end
 
-      def define_attribute(element, lookup_context, node)
+      def define_attribute(element, lookup_context)
         attr_name = element['name'] || without_namespace(element['ref'])
 
         if (base_type_definition = base_type_definitions[element['type']])
