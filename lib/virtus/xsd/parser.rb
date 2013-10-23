@@ -41,59 +41,30 @@ module Virtus
         end
       end
 
-      def build_type_definition(type, parent_lookup_context = nil)
-        define_type(type, name: type.type.name, simple: !type.type.complex) do |type_definition|
-          lookup_context = LookupContext.create(type.document, parent_lookup_context)
-          type_definition.superclass = get_superclass(lookup_context, type.type)
-
-          fill_attributes(lookup_context, type_definition, type.type)
+      def build_type_definition(type_ref, parent_lookup_context = nil)
+        define_type(type_ref, name: type_ref.type.name, simple: !type_ref.type.complex) do |type_definition|
+          lookup_context = LookupContext.create(type_ref.document, parent_lookup_context)
+          if type_ref.type.base
+            type_definition.superclass = get_type_definition(lookup_context.lookup_type(type_ref.type.base),
+                                                             lookup_context)
+          end
+          type_ref.type.attributes.map { |attr_node|
+            define_attribute(type_definition, attr_node, lookup_context)
+          }
         end
       end
 
-      def get_superclass(lookup_context, type)
-        return unless type.base
-        base_type_definitions[type.base] ||
-          get_type_definition(lookup_context.lookup_type(type.base), lookup_context)
-      end
-
-      def fill_attributes(lookup_context, type_definition, type)
-        collect_attributes(lookup_context, type).each do |attr|
-          type_definition.attributes[attr.name] = attr
-        end
-      end
-
-      def collect_attributes(lookup_context, type)
-        type.attributes.map do |element|
-          define_attribute(element, lookup_context)
-        end
-      end
-
-      def define_attribute(element, lookup_context)
+      def define_attribute(type_definition, element, lookup_context)
         attr_name = element['name'] || without_namespace(element['ref'])
-
-        if (base_type_definition = base_type_definitions[element['type']])
-          AttributeDefinition.new(attr_name, base_type_definition)
-        else
-          attr_type = resolve_type(lookup_context, element)
-          attr_typedef = get_type_definition(attr_type, lookup_context)
-          AttributeDefinition.new(attr_name, attr_typedef)
-        end
+        attr_type = resolve_type(lookup_context, element)
+        attr_typedef = get_type_definition(attr_type, lookup_context)
+        type_definition.attributes[attr_name] = AttributeDefinition.new(attr_name, attr_typedef)
       end
 
       def define_type(type, type_info)
         (type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)).tap do |type_definition|
           yield(type_definition) if block_given?
         end
-      end
-
-      def base_type_definitions
-        @base_type_definitions ||= {
-          'xs:string' => TypeDefinition.new('String'),
-          'xs:decimal' => TypeDefinition.new('Numeric'),
-          'xs:float' => TypeDefinition.new('Float'),
-          'xs:integer' => TypeDefinition.new('Integer'),
-          'xs:boolean' => TypeDefinition.new('Boolean')
-        }
       end
 
       def without_namespace(name)
@@ -116,8 +87,8 @@ module Virtus
 
       def add_base_type(doc, type_name, opts = {})
         doc.types ||= []
-        doc.types << OpenStruct.new(name: type_name).tap do |type|
-          define_type(type, opts)
+        doc.types << Document::Type.new(type_name, false, nil, []).tap do |type|
+          define_type(type, opts.merge(base: true, simple: true))
         end
       end
 
@@ -125,6 +96,10 @@ module Virtus
         Document.new.tap do |doc|
           doc.urn = 'http://www.w3.org/2001/XMLSchema'
           add_base_type(doc, 'string', name: 'String')
+          add_base_type(doc, 'decimal', name: 'Numeric')
+          add_base_type(doc, 'float', name: 'Float')
+          add_base_type(doc, 'integer', name: 'Integer')
+          add_base_type(doc, 'boolean', name: 'Boolean')
         end
       end
 
