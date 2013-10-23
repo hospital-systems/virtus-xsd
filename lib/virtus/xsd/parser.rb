@@ -100,6 +100,11 @@ module Virtus
           add_base_type(doc, 'float', name: 'Float')
           add_base_type(doc, 'integer', name: 'Integer')
           add_base_type(doc, 'boolean', name: 'Boolean')
+          add_base_type(doc, 'base64Binary', name: 'String')
+          add_base_type(doc, 'NMTOKEN', name: 'String')
+          add_base_type(doc, 'token', name: 'String')
+          add_base_type(doc, 'anyURI', name: 'String')
+          add_base_type(doc, 'double', name: 'Float')
         end
       end
 
