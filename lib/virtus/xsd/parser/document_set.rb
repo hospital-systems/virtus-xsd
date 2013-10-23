@@ -4,14 +4,11 @@ module Virtus
   module Xsd
     class Parser
       class DocumentSet
-        def self.load(path, root_scope = nil)
+        def self.load(path)
           doc = Document.load(path)
           documents = load_recursive(doc)
 
-          new(documents, root_scope) do |scope|
-            scope.register(doc.namespace, scope) if doc.namespace
-            load_imports(doc, scope)
-          end
+          new(documents)
         end
 
         def self.load_recursive(doc)
@@ -23,14 +20,6 @@ module Virtus
 
             included_documents = current_document.includes.map { |include| Document.load(include.path) }
             unprocessed_documents.concat(included_documents)
-          end
-        end
-
-        def self.load_imports(doc, scope)
-          doc.imports.each do |import|
-            unless scope.registered?(import.namespace)
-              load(import.path, scope)
-            end
           end
         end
 
@@ -66,29 +55,12 @@ module Virtus
           @attributes ||= xpath('xs:schema/xs:attribute')
         end
 
-        def [](namespace)
-          namespace = scoped_documents.map do |doc|
-            doc.namespaces["xmlns:#{namespace}"]
-          end.compact.first || namespace
-          registry[namespace]
-        end
-
-        def register(namespace, document)
-          registry[namespace] = document
-        end
-
-        def registered?(namespace)
-          registry.key?(namespace)
-        end
-
-        attr_reader :scoped_documents, :registry
+        attr_reader :scoped_documents
 
         protected
 
-        def initialize(scoped_documents, root_scope = nil, &block)
+        def initialize(scoped_documents)
           @scoped_documents = scoped_documents
-          @registry = root_scope ? root_scope.registry : {}
-          yield(self) if block_given?
         end
 
         def xpath(xpath)

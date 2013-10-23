@@ -4,6 +4,7 @@ module Virtus
       class Document
         Import = Struct.new(:namespace, :path)
         Include = Struct.new(:path)
+        Namespace = Struct.new(:prefix, :urn)
         Node = Struct.new(:document, :node) do
           def [](attr_name)
             node[attr_name]
@@ -22,7 +23,9 @@ module Virtus
         end
 
         def namespaces
-          @document.namespaces
+          @namespaces ||= @document.namespaces.map do |prefix, urn|
+            Namespace.new(prefix.sub(/^xmlns:/, ''), urn)
+          end
         end
 
         def includes
@@ -53,8 +56,8 @@ module Virtus
           @document.xpath(xpath).map { |node| Node.new(self, node) }
         end
 
-        def namespace
-          @namespace ||= @document.root['targetNamespace']
+        def urn
+          @urn ||= @document.root['targetNamespace']
         end
 
         private

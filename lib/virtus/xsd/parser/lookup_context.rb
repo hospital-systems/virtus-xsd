@@ -7,18 +7,15 @@ module Virtus
         def self.create(document, parent_lookup_context = nil)
           mapping = {nil => DocumentSet.load(document.path)}
           if parent_lookup_context
-            document.namespaces.each do |ns_alias, namespace|
-              ns_alias = ns_alias.sub(/^xmlns:/, '')
+            document.namespaces.each do |namespace|
               parent_lookup_context.mapping.each_value do |document_set|
-                if document_set.root_document.namespace == namespace
-                  mapping[ns_alias] = document_set
-                end
+                mapping[namespace.prefix] = document_set if document_set.root_document.urn == namespace.urn
               end
             end
           end
           document.imports.each do |import|
-            ns_alias = document.namespaces.invert[import.namespace].sub(/^xmlns:/, '')
-            mapping[ns_alias] = DocumentSet.load(import.path)
+            namespace = document.namespaces.find { |ns| ns.urn == import.namespace }
+            mapping[namespace.prefix] = DocumentSet.load(import.path)
           end
           new(mapping)
         end
