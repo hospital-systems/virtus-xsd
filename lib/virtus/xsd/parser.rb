@@ -82,9 +82,13 @@ module Virtus
       end
 
       def resolve_type(type_ref, attr_node, ctx)
-        resolve_anonymous_type(type_ref, attr_node) ||
+        attr_type_ref = resolve_anonymous_type(type_ref, attr_node) ||
           resolve_type_by_ref(type_ref, attr_node, ctx) ||
           ctx.lookup_type(attr_node['type'])
+        if attr_type_ref.nil?
+          fail "Can't resolve type '#{attr_node['type']}' for '#{type_ref.type.name}##{attr_node['name']}'"
+        end
+        attr_type_ref
       end
 
       def resolve_anonymous_type(type_ref, attr_node)
@@ -128,11 +132,13 @@ module Virtus
           add_base_type(doc, 'boolean', name: 'Boolean')
           add_base_type(doc, 'base64Binary', name: 'String')
           add_base_type(doc, 'NMTOKEN', name: 'String')
-          add_base_type(doc, 'NMTOKENS', name: 'String')
+          add_base_type(doc, 'NMTOKENS', name: 'Array[String]')
           add_base_type(doc, 'token', name: 'String')
           add_base_type(doc, 'anyURI', name: 'String')
           add_base_type(doc, 'double', name: 'Float')
           add_base_type(doc, 'ID', name: 'String')
+          add_base_type(doc, 'IDREF', name: 'String')
+          add_base_type(doc, 'IDREFS', name: 'Array[String]')
         end
       end
 
