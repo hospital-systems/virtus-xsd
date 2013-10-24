@@ -16,14 +16,6 @@ module Virtus
         attributes[attr_name] || (superclass && superclass[attr_name])
       end
 
-      def hash
-        name.hash
-      end
-
-      def eql?(other)
-        other.is_a?(Virtus::Xsd::TypeDefinition) && name == other.name
-      end
-
       def base?
         options[:base]
       end
@@ -31,8 +23,6 @@ module Virtus
       def simple?
         options[:simple]
       end
-
-      alias_method :==, :eql?
     end
   end
 end

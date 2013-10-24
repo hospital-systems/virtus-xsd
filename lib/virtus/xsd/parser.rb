@@ -13,7 +13,8 @@ module Virtus
       def initialize(xsd_path, config = {})
         @scope = DocumentSet.load(xsd_path)
         @config = config
-        @type_registry = {}
+        @type_ref2typedef = {}
+        @defined_types = {}
       end
 
       def parse
@@ -25,10 +26,10 @@ module Virtus
       protected
 
       attr_reader :scope
-      attr_reader :type_registry
+      attr_reader :type_ref2typedef, :defined_types
 
       def get_type_definition(type, parent_lookup_context = nil)
-        type_registry[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
+        type_ref2typedef[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
       end
 
       def type_overrides
@@ -41,26 +42,35 @@ module Virtus
 
       def override_type(type)
         if (type_info = type_overrides[type.type.name])
-          define_type(type, type_info.symbolize_keys)
+          define_type(type, get_or_make_typedef(type_info.symbolize_keys))
         end
       end
 
       def build_type_definition(type_ref, parent_ctx = nil)
         type = type_ref.type
-        define_type(type_ref, name: apply_renaming(type.name), simple: !type.complex) do |typedef|
-          ctx = LookupContext.create(type_ref.document, parent_ctx)
-          typedef.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
-          typedef.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
-          type.attributes.each do |attr_node|
-            build_attribute(type_ref, attr_node, ctx).tap do |attr|
-              typedef.attributes[attr.name] = attr
-            end
+        typedef = make_typedef(name: apply_renaming(type.name), simple: !type.complex)
+        define_type(type_ref, typedef)
+        ctx = LookupContext.create(type_ref.document, parent_ctx)
+        typedef.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
+        typedef.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
+        type.attributes.each do |attr_node|
+          build_attribute(type_ref, attr_node, ctx).tap do |attr|
+            typedef.attributes[attr.name] = attr
           end
+        end
+        typedef
+      end
+
+      def ignored_prefixes_regexp
+        @ignored_prefixes_regexp ||= begin
+          prefixes = @config['prefixes']
+          ignored_prefixes = prefixes && prefixes['remove'] || []
+          /^(#{ignored_prefixes.map { |pfx| Regexp.escape(pfx) }.join('|')})/
         end
       end
 
       def apply_renaming(name)
-        type_renames.fetch(name, name)
+        type_renames.fetch(name, name.sub(ignored_prefixes_regexp, ''))
       end
 
       def build_attribute(type_ref, attr_node, lookup_context)
@@ -71,10 +81,12 @@ module Virtus
         Virtus::Xsd::AttributeDefinition.new(attr_name, attr_typedef, multiple: multiple)
       end
 
-      def define_type(type, type_info)
-        (type_registry[type] = Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)).tap do |type_definition|
-          yield(type_definition) if block_given?
+      def define_type(type, typedef)
+        existing_typedef = defined_types[typedef.name]
+        if !existing_typedef.nil? && existing_typedef != typedef
+          fail "Type '#{typedef.name}' is already defined"
         end
+        defined_types[typedef.name] = type_ref2typedef[type] = typedef
       end
 
       def without_namespace(name)
@@ -115,10 +127,19 @@ module Virtus
         make_type_ref(doc, Document::Type.new(type_name, false, nil, nil, []))
       end
 
+      def make_typedef(type_info)
+        Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
+      end
+
+      def get_or_make_typedef(type_info)
+        defined_types[type_info[:name]] || make_typedef(type_info)
+      end
+
       def add_base_type(doc, type_name, opts = {})
         doc.types ||= []
         doc.types << base_type_ref(doc, type_name).tap do |type|
-          define_type(type, opts.merge(base: true, simple: true))
+          typedef = get_or_make_typedef(opts.merge(base: true, simple: true))
+          define_type(type, typedef)
         end
       end
 
