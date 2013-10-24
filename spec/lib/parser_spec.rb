@@ -56,6 +56,12 @@ describe Virtus::Xsd::Parser do
     country['city'].should be_multiple
   end
 
+  it 'should parse anonymous simple type' do
+    country = parsed_types['Country']
+    country.should have_attribute('form_of_government')
+    country['form_of_government'].type.name.should == 'Country.form_of_government'
+  end
+
   class HaveAttributeMatcher
     attr_reader :failure_message
 

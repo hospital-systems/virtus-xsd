@@ -37,27 +37,31 @@ module Virtus
             doc.imports = xml.xpath('xs:schema/xs:import').map { |node|
               Import.new(node['namespace'], File.expand_path(node['schemaLocation'], File.dirname(path)))
             }
-            doc.types = xml.xpath('xs:schema/xs:simpleType').map do |node|
-              restriction = node.xpath('xs:restriction').first
-              union = node.xpath('xs:union').first
-              list = node.xpath('xs:list').first
-              base = restriction && restriction['base'] || union && union['memberTypes'].split.first
-              item_type = list && list['itemType']
-              Type.new(node['name'], false, base, item_type, [])
-            end
-            doc.types += xml.xpath('xs:schema/xs:complexType').map do |node|
-              extension = node.xpath('xs:complexContent/xs:extension').first
-              restriction = node.xpath('xs:complexContent/xs:restriction').first
-              base = extension && extension['base'] || restriction && restriction['base']
-              attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element')
-              Type.new(node['name'], true, base, nil, attributes)
-            end
+            doc.types = xml.xpath('xs:schema/xs:simpleType').map { |node| build_simple_type(node) }
+            doc.types += xml.xpath('xs:schema/xs:complexType').map { |node| build_complex_type(node) }
             #FIXME: should be in LookupContext
             doc.types = doc.types.map { |type| TypeRef.new(doc, type) }
             doc.element_nodes = find_nodes(xml, 'xs:schema/xs:element', doc)
             doc.attribute_nodes = find_nodes(xml, 'xs:schema/xs:attribute', doc)
             doc.urn = xml.root['targetNamespace']
           end
+        end
+
+        def self.build_simple_type(node, name = node['name'])
+          restriction = node.xpath('xs:restriction').first
+          union = node.xpath('xs:union').first
+          list = node.xpath('xs:list').first
+          base = restriction && restriction['base'] || union && union['memberTypes'].split.first
+          item_type = list && list['itemType']
+          Type.new(name, false, base, item_type, [])
+        end
+
+        def self.build_complex_type(node)
+          extension = node.xpath('xs:complexContent/xs:extension').first
+          restriction = node.xpath('xs:complexContent/xs:restriction').first
+          base = extension && extension['base'] || restriction && restriction['base']
+          attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element')
+          Type.new(node['name'], true, base, nil, attributes)
         end
 
         private

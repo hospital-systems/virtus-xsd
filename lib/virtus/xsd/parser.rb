@@ -47,11 +47,15 @@ module Virtus
 
       def build_type_definition(type_ref, parent_ctx = nil)
         type = type_ref.type
-        define_type(type_ref, name: apply_renaming(type.name), simple: !type.complex) do |type_def|
+        define_type(type_ref, name: apply_renaming(type.name), simple: !type.complex) do |typedef|
           ctx = LookupContext.create(type_ref.document, parent_ctx)
-          type_def.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
-          type_def.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
-          type.attributes.map { |attr_node| define_attribute(type_def, attr_node, ctx) }
+          typedef.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
+          typedef.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
+          type.attributes.each do |attr_node|
+            build_attribute(type_ref, attr_node, ctx).tap do |attr|
+              typedef.attributes[attr.name] = attr
+            end
+          end
         end
       end
 
@@ -59,13 +63,12 @@ module Virtus
         type_renames.fetch(name, name)
       end
 
-      def define_attribute(type_definition, attr_node, lookup_context)
+      def build_attribute(type_ref, attr_node, lookup_context)
         attr_name = attr_node['name'] || without_namespace(attr_node['ref'])
-        attr_type = resolve_type(lookup_context, attr_node)
+        attr_type = resolve_type(type_ref, attr_node, lookup_context)
         attr_typedef = get_type_definition(attr_type, lookup_context)
         multiple = attr_node['maxOccurs'] == 'unbounded'
-        type_definition.attributes[attr_name] =
-          Virtus::Xsd::AttributeDefinition.new(attr_name, attr_typedef, multiple: multiple)
+        Virtus::Xsd::AttributeDefinition.new(attr_name, attr_typedef, multiple: multiple)
       end
 
       def define_type(type, type_info)
@@ -78,23 +81,39 @@ module Virtus
         name.split(':').last
       end
 
-      def resolve_type(lookup_context, attr_node)
-        resolve_type_by_ref(lookup_context, attr_node) || lookup_context.lookup_type(attr_node['type'])
+      def resolve_type(type_ref, attr_node, ctx)
+        resolve_anonymous_type(type_ref, attr_node) ||
+          resolve_type_by_ref(type_ref, attr_node, ctx) ||
+          ctx.lookup_type(attr_node['type'])
       end
 
-      def resolve_type_by_ref(lookup_context, attr_node)
-        if (ref = attr_node['ref'])
-          ref_node = lookup_context.lookup_attribute(ref) || lookup_context.lookup_element(ref)
-          fail "Can't find referenced #{attr_node.name} by name '#{ref}'" if ref_node.nil?
-
-          ref_lookup_content = LookupContext.create(ref_node.document, lookup_context)
-          ref_lookup_content.lookup_type(ref_node['type'])
+      def resolve_anonymous_type(type_ref, attr_node)
+        if (simple_type_node = attr_node.xpath('xs:simpleType').first)
+          simple_type = Document.build_simple_type(simple_type_node,
+                                                   "#{type_ref.type.name}.#{attr_node['name']}")
+          make_type_ref(type_ref.document, simple_type)
         end
+      end
+
+      def resolve_type_by_ref(type_ref, attr_node, ctx)
+        if (ref = attr_node['ref'])
+          ref_node = ctx.lookup_attribute(ref) || ctx.lookup_element(ref)
+          fail "Can't find referenced #{attr_node.name} by name '#{ref}'" if ref_node.nil?
+          resolve_type(type_ref, ref_node.node, LookupContext.create(ref_node.document, ctx))
+        end
+      end
+
+      def make_type_ref(doc, type)
+        Document::TypeRef.new(doc, type)
+      end
+
+      def base_type_ref(doc, type_name)
+        make_type_ref(doc, Document::Type.new(type_name, false, nil, nil, []))
       end
 
       def add_base_type(doc, type_name, opts = {})
         doc.types ||= []
-        doc.types << Document::TypeRef.new(doc, Document::Type.new(type_name, false, nil, [])).tap do |type|
+        doc.types << base_type_ref(doc, type_name).tap do |type|
           define_type(type, opts.merge(base: true, simple: true))
         end
       end
