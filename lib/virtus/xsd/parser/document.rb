@@ -60,7 +60,7 @@ module Virtus
           extension = node.xpath('xs:complexContent/xs:extension').first
           restriction = node.xpath('xs:complexContent/xs:restriction').first
           base = extension && extension['base'] || restriction && restriction['base']
-          attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element')
+          attributes = (extension || node).xpath('xs:attribute|xs:sequence/xs:element|xs:sequence/xs:choice/xs:element')
           Type.new(node['name'], true, base, nil, attributes)
         end
 
