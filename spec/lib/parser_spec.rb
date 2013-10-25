@@ -12,6 +12,17 @@ describe Virtus::Xsd::Parser do
     HaveAttributeMatcher.new(name)
   end
 
+  it 'should allow replace type with base type' do
+    parsed_types.keys.should_not include 'ANY'
+    parsed_types.keys.should include 'Object'
+    parsed_types['Object'].should be_base
+  end
+
+  it 'should allow type renaming' do
+    parsed_types.keys.should include 'Town'
+    parsed_types['Town'].should have_attribute('name').of_type('String')
+  end
+
   it 'should parse complex type' do
     country = parsed_types['Country']
     country.should_not be_nil
@@ -19,13 +30,13 @@ describe Virtus::Xsd::Parser do
     country.should_not be_simple
     country.should have_attribute('name').of_type('String')
     country.should have_attribute('population').of_type('quantity')
-    country.should have_attribute('city').of_type('City')
+    country.should have_attribute('city').of_type('Town')
   end
 
   it 'should apply types overrides' do
     parsed_types['Object'].should_not be_nil
     parsed_types['ANY'].should be_nil
-    city = parsed_types['City']
+    city = parsed_types['Town']
     city.should have_attribute('crest').of_type('Object')
   end
 

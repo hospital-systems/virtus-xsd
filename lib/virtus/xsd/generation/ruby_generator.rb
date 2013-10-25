@@ -24,7 +24,7 @@ module Virtus
                          module_name: module_name) do
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
-            type_def.attributes.values.each do |attr|
+            type_def.attributes.values.sort_by(&:name).each do |attr|
               builder.invoke_pretty 'attribute',
                                     ":#{make_attribute_name(attr)}", make_attribute_type(attr)
             end

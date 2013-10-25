@@ -1,7 +1,7 @@
 require 'ostruct'
-require 'active_support/core_ext/hash/keys'
 require 'virtus/xsd/parser/document_set'
 require 'virtus/xsd/parser/lookup_context'
+require 'virtus/xsd/parser/config'
 
 module Virtus
   module Xsd
@@ -12,7 +12,7 @@ module Virtus
 
       def initialize(xsd_path, config = {})
         @scope = DocumentSet.load(xsd_path)
-        @config = config
+        @config = Config.new(config)
         @type_ref2typedef = {}
         @defined_types = {}
       end
@@ -25,24 +25,16 @@ module Virtus
 
       protected
 
-      attr_reader :scope
+      attr_reader :scope, :config
       attr_reader :type_ref2typedef, :defined_types
 
       def get_type_definition(type, parent_lookup_context = nil)
         type_ref2typedef[type] || override_type(type) || build_type_definition(type, parent_lookup_context)
       end
 
-      def type_overrides
-        @type_overrides ||= @config['types'] || {}
-      end
-
-      def type_renames
-        @type_renames ||= @config['names'] || {}
-      end
-
       def override_type(type)
-        if (type_info = type_overrides[type.type.name])
-          define_type(type, get_or_make_typedef(type_info.symbolize_keys))
+        if (type_replacement = config.type_replacements[type.type.name])
+          define_type(type, get_or_make_typedef(type_replacement))
         end
       end
 
@@ -61,16 +53,8 @@ module Virtus
         typedef
       end
 
-      def ignored_prefixes_regexp
-        @ignored_prefixes_regexp ||= begin
-          prefixes = @config['prefixes']
-          ignored_prefixes = prefixes && prefixes['remove'] || []
-          /^(#{ignored_prefixes.map { |pfx| Regexp.escape(pfx) }.join('|')})/
-        end
-      end
-
       def apply_renaming(name)
-        type_renames.fetch(name, name.sub(ignored_prefixes_regexp, ''))
+        config.type_renames.fetch(name, name.sub(config.ignored_prefixes_regexp, ''))
       end
 
       def build_attribute(type_ref, attr_node, lookup_context)

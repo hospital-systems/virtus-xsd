@@ -2,3 +2,5 @@ types:
   ANY:
     name: Object
     base: true
+  City:
+    name: Town
