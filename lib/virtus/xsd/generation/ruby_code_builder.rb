@@ -27,7 +27,15 @@ module Virtus
         end
 
         def invoke_pretty(method_name, *args)
-          build_line "#{method_name} #{args.join(', ')}"
+          call = "#{method_name}"
+          call << ' ' << args.join(', ') unless args.empty?
+          if block_given?
+            build_line "#{call} do"
+            ident { yield }
+            build_line 'end'
+          else
+            build_line call
+          end
         end
 
         def blank_line

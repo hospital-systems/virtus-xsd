@@ -4,3 +4,6 @@ types:
     base: true
   City:
     name: Town
+  GeoUnit:
+    determinant:
+      - name

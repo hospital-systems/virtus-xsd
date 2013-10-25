@@ -73,6 +73,11 @@ describe Virtus::Xsd::Parser do
     country['formOfGovernment'].type.name.should == 'Country.formOfGovernment'
   end
 
+  it 'should have determinant if specified' do
+    geo_unit = parsed_types['GeoUnit']
+    geo_unit.determinant.should == ['name']
+  end
+
   class HaveAttributeMatcher
     attr_reader :failure_message
 

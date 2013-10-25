@@ -15,21 +15,45 @@ module Virtus
 
       private
 
-      def generate_class(type_def)
-        return if type_def.base? || type_def.simple?
-        output_for(type_def) do |output|
-          builder = Generation::RubyCodeBuilder.new(output)
-          builder.class_(get_sanitized_type_name(type_def),
-                         superclass: type_def.superclass && get_sanitized_type_name(type_def.superclass),
-                         module_name: module_name) do
+      attr_reader :builder
+
+      def build(typedef)
+        return if typedef.base? || typedef.simple?
+        output_for(typedef) do |output|
+          @builder = Generation::RubyCodeBuilder.new(output)
+          yield
+          @builder = nil
+        end
+      end
+
+      def generate_class(typedef)
+        build typedef do
+          name = get_sanitized_type_name(typedef)
+          superclass = typedef.superclass && get_sanitized_type_name(typedef.superclass)
+          builder.class_(name, superclass: superclass, module_name: module_name) do
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
-            type_def.attributes.values.sort_by(&:name).each do |attr|
-              builder.invoke_pretty 'attribute',
-                                    ":#{make_attribute_name(attr)}", make_attribute_type(attr)
-            end
+            generate_attributes(typedef)
           end
         end
+      end
+
+      def generate_attributes(typedef)
+        attributes = typedef.attributes.sort_by(&:name)
+        if typedef.determinant
+          determinant_attributes = attributes.select { |attr| typedef.determinant.include?(attr.name) }
+          attributes = attributes - determinant_attributes
+          builder.invoke_pretty 'values' do
+            determinant_attributes.each { |attr| generate_attribute(attr) }
+          end
+          builder.blank_line
+        end
+        attributes.each { |attr| generate_attribute(attr) }
+      end
+
+      def generate_attribute(attr)
+        builder.invoke_pretty 'attribute',
+                              ":#{make_attribute_name(attr)}", make_attribute_type(attr)
       end
 
       def make_attribute_name(attr)

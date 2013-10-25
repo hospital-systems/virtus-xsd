@@ -1,4 +1,5 @@
 require 'ostruct'
+require 'virtus/xsd/type_definition'
 require 'virtus/xsd/parser/document_set'
 require 'virtus/xsd/parser/lookup_context'
 require 'virtus/xsd/parser/config'
@@ -40,21 +41,26 @@ module Virtus
 
       def build_type_definition(type_ref, parent_ctx = nil)
         type = type_ref.type
-        typedef = make_typedef(name: apply_renaming(type.name), simple: !type.complex)
+        typedef = make_typedef(build_type_info(type))
         define_type(type_ref, typedef)
         ctx = LookupContext.create(type_ref.document, parent_ctx)
         typedef.item_type = get_type_definition(ctx.lookup_type(type.item_type), ctx) if type.item_type
         typedef.superclass = get_type_definition(ctx.lookup_type(type.base), ctx) if type.base
         type.attributes.each do |attr_node|
           build_attribute(type_ref, attr_node, ctx).tap do |attr|
-            typedef.attributes[attr.name] = attr
+            typedef[attr.name] = attr
           end
         end
         typedef
       end
 
-      def apply_renaming(name)
-        config.type_renames.fetch(name, name.sub(config.ignored_prefixes_regexp, ''))
+      def build_type_info(type)
+        type_info = {
+          name: config.type_renames.fetch(type.name, type.name.sub(config.ignored_prefixes_regexp, '')),
+          simple: !type.complex
+        }
+        type_info.merge!(config.type_extensions[type.name] || {})
+        type_info
       end
 
       def build_attribute(type_ref, attr_node, lookup_context)
@@ -112,7 +118,7 @@ module Virtus
       end
 
       def make_typedef(type_info)
-        Virtus::Xsd::TypeDefinition.new(type_info.delete(:name), type_info)
+        TypeDefinition.new(type_info)
       end
 
       def get_or_make_typedef(type_info)

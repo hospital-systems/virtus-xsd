@@ -17,8 +17,16 @@ module Virtus
           end
         end
 
+        def type_extensions
+          @type_extensions ||= types.each_with_object({}) do |(name, info), acc|
+            acc[name] = info.symbolize_keys unless info['base']
+          end
+        end
+
         def type_renames
-          @type_renames ||= types.each_with_object({}) { |(name, info), acc| acc[name] = info['name'] }
+          @type_renames ||= types.each_with_object({}) do |(name, info), acc|
+            acc[name] = info['name'] if info['name']
+          end
         end
 
         def ignored_prefixes_regexp
