@@ -58,8 +58,8 @@ describe Virtus::Xsd::Parser do
 
   it 'should parse anonymous simple type' do
     country = parsed_types['Country']
-    country.should have_attribute('form_of_government')
-    country['form_of_government'].type.name.should == 'Country.form_of_government'
+    country.should have_attribute('formOfGovernment')
+    country['formOfGovernment'].type.name.should == 'Country.formOfGovernment'
   end
 
   class HaveAttributeMatcher

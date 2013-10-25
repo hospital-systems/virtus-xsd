@@ -19,7 +19,7 @@
           <xs:element name="city" type="City" minOccurs="0" maxOccurs="unbounded"/>
         </xs:sequence>
         <xs:attribute name="languages" type="set_Language"/>
-        <xs:attribute name="form_of_government">
+        <xs:attribute name="formOfGovernment">
           <xs:simpleType>
             <xs:restriction base="xs:string">
               <xs:enumeration value="Monarchy"/>

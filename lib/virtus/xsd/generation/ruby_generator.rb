@@ -25,10 +25,15 @@ module Virtus
             builder.invoke_pretty 'include', 'Virtus.model'
             builder.blank_line
             type_def.attributes.values.each do |attr|
-              builder.invoke_pretty 'attribute', ":#{attr.name}", make_attribute_type(attr)
+              builder.invoke_pretty 'attribute',
+                                    ":#{make_attribute_name(attr)}", make_attribute_type(attr)
             end
           end
         end
+      end
+
+      def make_attribute_name(attr)
+        attr.name.underscore
       end
 
       def make_attribute_type(attr)

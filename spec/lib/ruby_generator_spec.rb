@@ -29,6 +29,7 @@ describe Virtus::Xsd::RubyGenerator do
     Test::Country.attribute_set[:name].should_not be_nil
     Test::Country.attribute_set[:population].type.primitive.should == Integer
     Test::Country.attribute_set[:languages].type.primitive.should == Array
+    Test::Country.attribute_set[:form_of_government].type.primitive.should == String
   end
 
   it 'should not generate base types' do
